@@ -1,0 +1,15 @@
+/*
+ * option_screen.h
+ *
+ *  Created on: Jan 17, 2026
+ *      Author: viorel_serbu
+ */
+
+#ifndef LCD_OPTION_SCREEN_H_
+#define LCD_OPTION_SCREEN_H_
+
+void do_option_screen();
+
+
+
+#endif /* LCD_OPTION_SCREEN_H_ */

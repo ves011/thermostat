@@ -1,0 +1,7 @@
+WIFI IRAM speed optimzation = 0
+WIFI TX IRAM speed optimzation = 0
+	==> heap 15:18k
+	
+WIFI AMPDU TX = 0
+WIFI AMPTU RX = 0
+	==> heap 18:19k
