@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 #include <sys/unistd.h>
-#include "esp_debug_helpers.h"
+//#include "esp_debug_helpers.h"
 #include "freertos/FreeRTOS.h"
 //#include "freertos/projdefs.h"
 #include "freertos/task.h"
@@ -32,7 +32,8 @@
 //#include "driver/gptimer.h"
 
 #include "lvgl.h"
-#include "esp_lcd_ili9341.h"
+//#include "esp_lcd_ili9341.h"
+#include "esp_lcd_panel_st7789.h"
 
 #include "project_specific.h"
 #include "common_defines.h"
@@ -53,7 +54,6 @@ int init_lcd_completed;
 
 QueueHandle_t ui_cmd_q;
 
-void example_lvgl_demo_ui(lv_display_t *disp);
 static void ui_task(void *pvParameters);
 
 #define BOOT_SCREEN		1
@@ -80,6 +80,7 @@ static void clock_timer_callback(void *args)
     		set_inactivity = inactivity_set_sec = 0;
     		}
     	}
+    /*
     if(lcd_inactivity)
 		{
 		inactivity_lcd_sec++;
@@ -91,6 +92,7 @@ static void clock_timer_callback(void *args)
     		lcd_inactivity = inactivity_lcd_sec = 0;
     		}
     	}
+    */
 	}
 /*	
 static void inactivity_timer_callback(void *args)
@@ -138,6 +140,7 @@ static void lcd_increase_lvgl_tick(void *arg)
 	}
 
 /* Rotate display and touch, when rotated screen in LVGL. Called when driver parameters are updated. */
+/*
 static void lcd_update_callback(lv_display_t *disp)
 	{
     esp_lcd_panel_handle_t panel_handle = lv_display_get_user_data(disp);
@@ -167,7 +170,7 @@ static void lcd_update_callback(lv_display_t *disp)
 	        break;
 	    }
 	}
-
+*/
 static void lcd_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 	{
     //lcd_update_callback(disp);
@@ -301,11 +304,6 @@ static void lcd_init()
                                                false, LV_FONT_DEFAULT);
     lv_disp_set_theme(dispp, theme);
 	
-		
-
-	//_lock_acquire(&lvgl_api_lock);
-	//example_lvgl_demo_ui(display);
-	//_lock_release(&lvgl_api_lock);
 	}
 
 void lvgl_task(void *pvParameters)

@@ -4,7 +4,6 @@
 #include <esp_spiffs.h>
 #include <nvs_flash.h>
 #include <driver/gpio.h>
-#include "esp_netif.h"
 #include "esp_log.h"
 #include "esp_console.h"
 
@@ -15,22 +14,21 @@
 #include "cmd_wifi.h"
 #include "cmd_system.h"
 #include "tcp_log.h"
-#include "wifi_credentials.h"
 #include "utils.h"
 #include "mqtt_ctrl.h"
 #include "lcd.h"
 #include "temps.h"
 #include "config.h"
-#include "le.h"
 
-console_state_t console_state;
 int restart_in_progress;
 int controller_op_registered;
-QueueHandle_t dev_mon_queue = NULL;
 
 #define PROMPT_STR	"thermo"
 
 static char *TAG = "thermo";
+
+//const char *nvs_cl_crt;
+//size_t nvs_cl_crt_sz;
 
 static void initialize_nvs(void)
 	{
@@ -49,7 +47,7 @@ void app_main(void)
 	msg_t msg;
 	int temps_probe;
 	msg.source = BOOT_MSG;
-    console_state = CONSOLE_OFF;
+    dev_conf.cs = CONSOLE_OFF;
 	setenv("TZ","EET-2EEST,M3.4.0/03,M10.4.0/04",1);
 
 	gpio_install_isr_service(0);
@@ -70,13 +68,22 @@ void app_main(void)
     //xQueueSend(ui_cmd_q, &msg, 0);
 	spiffs_storage_check();
 	initialize_nvs();
+	
+	get_all_nvscerts();
+	
+	rw_dev_config(PARAM_READ);
 	msg.val = 1;
     xQueueSend(ui_cmd_q, &msg, 0);
-	wifi_join(NULL, NULL, JOIN_TIMEOUT_MS);
+	if(!wifi_join(NULL, NULL, JOIN_TIMEOUT_MS))
+		{
+		ESP_LOGI(TAG, "Failed to connect to %s", dev_conf.sta_ssid);
+		}
+	else
+		{
+		ESP_LOGI(TAG, "Connected to %s", dev_conf.sta_ssid);
+		}
 	
-	if(rw_console_state(PARAM_READ, &console_state) == ESP_FAIL)
-		console_state = CONSOLE_ON;
-	tcp_log_evt_queue = NULL;
+	//tcp_log_evt_queue = NULL;
 	tcp_log_init();
 	esp_log_set_vprintf(my_log_vprintf);
 	msg.val = 2;
@@ -86,25 +93,6 @@ void app_main(void)
 		esp_restart();
 	msg.val = 3;
     xQueueSend(ui_cmd_q, &msg, 0);
-
-#ifdef WITH_CONSOLE
-	esp_console_repl_t *repl = NULL;
-    esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
-    /* Prompt to be printed before each line.
-     * This can be customized, made dynamic, etc.
-     */
-    repl_config.prompt = PROMPT_STR ">";
-    repl_config.max_cmdline_length = CONFIG_CONSOLE_MAX_COMMAND_LINE_LENGTH;
-
-
-#if CONFIG_STORE_HISTORY
-	//initialize_filesystem();
-	repl_config.history_save_path = BASE_PATH HISTORY_FILE;
-	//ESP_LOGI(TAG, "Command history enabled");
-#else
-	ESP_LOGI(TAG, "Command history disabled");
-#endif
-#endif
 
 	esp_console_register_help_command();
 	register_system();
@@ -119,6 +107,17 @@ void app_main(void)
 	controller_op_registered = 1;
 
 #ifdef WITH_CONSOLE
+	esp_console_repl_t *repl = NULL;
+    esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
+    /* Prompt to be printed before each line.
+     * This can be customized, made dynamic, etc.
+     */
+    repl_config.prompt = PROMPT_STR ">";
+    repl_config.max_cmdline_length = CONFIG_CONSOLE_MAX_COMMAND_LINE_LENGTH;
+#if CONFIG_STORE_HISTORY
+	repl_config.history_save_path = BASE_PATH HISTORY_FILE;
+#endif
+
 #if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) || defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)
     esp_console_dev_uart_config_t hw_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_console_new_repl_uart(&hw_config, &repl_config, &repl));
@@ -132,16 +131,14 @@ void app_main(void)
     repl_config.task_stack_size = 6020;
     ESP_ERROR_CHECK(esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &repl));
     //ESP_LOGI(TAG, "console stack: %d", repl_config.task_stack_size);
-
 #else
 	#error Unsupported console type
 #endif
-
 	ESP_ERROR_CHECK(esp_console_start_repl(repl));
 #endif
 	if(temps_probe == ESP_FAIL)    
 		msg.val = 101;
 	else
 		msg.val = 8;
-    //xQueueSend(ui_cmd_q, &msg, 0);
+    xQueueSend(ui_cmd_q, &msg, 0);
 	}

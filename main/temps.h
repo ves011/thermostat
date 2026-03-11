@@ -10,7 +10,7 @@
 
 #include <inttypes.h>
 
-#define MAX_TEMP_DEVICES   (10)
+//#define MAX_TEMP_DEVICES   (10)
 #define DS18B20_RESOLUTION   (DS18B20_RESOLUTION_12_BIT)
 #define DS_SAMPLE_PERIOD        (1000)   // milliseconds
 

@@ -33,7 +33,7 @@ static void draw_boot_screen()
 	gpio_set_level(LCD_BK_LIGHT, 0);
 
 	boot_scr = lv_obj_create(NULL);
-	lv_obj_set_style_bg_color(boot_scr, lv_color_hex(0xffffff), LV_PART_MAIN);
+	lv_obj_set_style_bg_color(boot_scr, lv_color_hex(0x0), LV_PART_MAIN);
 	int y0 = 5, sy = 22;
 	for(int i = 0; i < 8; i++)
 		{

@@ -32,8 +32,9 @@
 #include "state_screen.h"
 #include "option_screen.h"
 
-lv_obj_t *ui_label[4];
-lv_anim_t opt_anim[4];
+#define NITEMS		3
+lv_obj_t *ui_label[NITEMS];
+lv_anim_t opt_anim[NITEMS];
 lv_obj_t *ui_optionscreen = NULL;
 
 lv_anim_t * label_Animation(int idx)
@@ -93,7 +94,7 @@ static void draw_option_screen()
     lv_obj_set_style_text_align(ui_restartop, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_restartop, &lv_font_montserrat_30, LV_PART_MAIN | LV_STATE_DEFAULT);
 	ui_label[1] = ui_restartop;
-		
+/*
     lv_obj_t *ui_bootota = lv_label_create(ui_optionscreen);
     lv_obj_set_width(ui_bootota, 162);
     lv_obj_set_height(ui_bootota, 40);
@@ -105,7 +106,7 @@ static void draw_option_screen()
     lv_obj_set_style_text_align(ui_bootota, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_bootota, &lv_font_montserrat_30, LV_PART_MAIN | LV_STATE_DEFAULT);
 	ui_label[2] = ui_bootota;
-	 
+*/	 
     lv_obj_t *ui_cancel = lv_label_create(ui_optionscreen);
     lv_obj_set_width(ui_cancel, 162);
     lv_obj_set_height(ui_cancel, 40);
@@ -116,9 +117,9 @@ static void draw_option_screen()
     lv_obj_set_style_text_opa(ui_cancel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_align(ui_cancel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_cancel, &lv_font_montserrat_30, LV_PART_MAIN | LV_STATE_DEFAULT);
-    ui_label[3] = ui_cancel;
+    ui_label[2] = ui_cancel;
     
-    for(int i = 0; i < 4; i++)
+    for(int i = 0; i < NITEMS; i++)
     	label_Animation(i);
         
     
@@ -128,7 +129,7 @@ static void draw_option_screen()
 void do_option_screen()
 	{
 	msg_t msg;
-	int opt_sel = 3;
+	int opt_sel = NITEMS - 1;
 	lv_anim_t *anim;
 	xQueueReset(ui_cmd_q);
 	if(!ui_optionscreen)
@@ -147,7 +148,7 @@ void do_option_screen()
 			switch(msg.source)
 				{
 				case K_PRESS:
-					if(opt_sel == 3)
+					if(opt_sel == NITEMS - 1)
 						{
 						if(ui_optionscreen) 
 							{
@@ -171,6 +172,10 @@ void do_option_screen()
 						//anim = lv_anim_start(&opt_anim[opt_sel]);
 						//_lock_release(&lvgl_api_lock);
 						}
+					else if(opt_sel == 1)
+						esp_restart();
+					//else if(opt_sel == 0)
+					//	do_ota();
 					break;
 				case K_ROT:
 					_lock_acquire(&lvgl_api_lock);
@@ -183,7 +188,7 @@ void do_option_screen()
 						opt_sel--;
 					else
  						opt_sel++;
-					if(opt_sel < 0) opt_sel = 3;
+					if(opt_sel < 0) opt_sel = NITEMS - 1;
 					if(opt_sel > 3) opt_sel = 0;
 					anim = lv_anim_start(&opt_anim[opt_sel]);
 					_lock_release(&lvgl_api_lock);

@@ -13,6 +13,7 @@
 //#include "font/lv_font.h"
 //#include "lv_api_map_v8.h"
 #include "esp_system.h"
+#include "esp_wifi_netif.h"
 //#include "misc/lv_anim_timeline.h"
 #include "misc/lv_color.h"
 #include "lv_conf.h"

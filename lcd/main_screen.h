@@ -10,8 +10,4 @@
 
 void do_main_screen(int active_screen);
 
-#define SET_STATE		2
-#define MEASURING_STATE	1
-
-
 #endif /* MAIN_SCREEN_H_ */

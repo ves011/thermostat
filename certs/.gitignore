@@ -2,3 +2,11 @@
 /client.crt
 /client.key
 /wifi_credentials.h
+/_wifi_credentials.h
+/cl.crt
+/client-short.crt
+/nvs.bin
+/nvs_partition_gen.py
+/nvscerts.bin
+/nvscerts.csv
+/script.bat

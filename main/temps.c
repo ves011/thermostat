@@ -5,6 +5,7 @@
  *      Author: viorel_serbu
  */
 
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -83,7 +84,7 @@ void tmon(void *pvParams)
 	{
 	msg_t msg;
 	int nt = 0;
-	float tc = 0., ts = 0., tp[2] = {-100., -100.};
+	float tc = 0., ts = 0., tp[2] = {-100, -100.};
 	char obuf[256], buf[40], mbuf[512];
 	time_t time_stamp;
 	struct tm timeinfo;
@@ -113,7 +114,7 @@ void tmon(void *pvParams)
 		{
 		if(xQueueReceive(temp_mon_queue, &msg, portMAX_DELAY))
 			{
-			ESP_LOGI(TAG, "msg.source: %d", (int)msg.source);
+			//ESP_LOGI(TAG, "msg.source: %d", (int)msg.source);
 			if(msg.source == MSG_TEMP_DATA)
 				{
 				time(&time_stamp);
@@ -137,7 +138,7 @@ void tmon(void *pvParams)
 								msg.val = (int)(tc * 100.);
 								tp[0] = tp[1];
 								tp[1] = tc;
-								if(tp[0] != -100.)
+								if(tp[0] > -90.)
 									{
 									if(tp[0] < freeze_temp && tp[1] < freeze_temp)
 										{
@@ -149,7 +150,7 @@ void tmon(void *pvParams)
 									else if(tp[0] > target_temp + hist_temp && tp[1] >  target_temp + hist_temp)
 										act_op(0, tc, hwad);
 									}
-								ESP_LOGI(TAG, "tp0 = %.2f, tp1 = %.2f / %.2f, %.2f", tp[0], tp[1], target_temp, hist_temp);
+								//ESP_LOGI(TAG, "tp0 = %.2f, tp1 = %.2f / %.2f, %.2f", tp[0], tp[1], target_temp, hist_temp);
 								msg.source = ACT_TEMP;
 								msg.val = (int)(tc * 100.);
 								xQueueSend(ui_cmd_q, &msg, pdMS_TO_TICKS(20)); 
@@ -172,7 +173,7 @@ void tmon(void *pvParams)
 						//	}
 						}
 					nt++;
-					ESP_LOGI(TAG, "%s", obuf);
+					//ESP_LOGI(TAG, "%s", obuf);
 					//publish_topic(TOPIC_MONITOR, mbuf, 0, 0);
 					}
 				// check for maintenance time
@@ -333,6 +334,7 @@ int register_temps()
 	gpio_config_t io_conf;
 	io_conf.mode = GPIO_MODE_OUTPUT;
     io_conf.pin_bit_mask = (1ULL << ACT_CMD_PIN);
+    io_conf.intr_type = GPIO_INTR_DISABLE;
     gpio_config(&io_conf);
     gpio_set_level(ACT_CMD_PIN, 0);
 	num_temp_devices = ds18b20_init(DS18B20_RESOLUTION_12B);
@@ -342,6 +344,7 @@ int register_temps()
 	for (int i = 0; i < num_temp_devices; i++)
 		{
 		hwad = get_addr(i);
+		tcor[i].hwaddr = 0;
 		for(int j = 0; j < NTEMP; j++)
 			{
 			if(d_hwaddr[j] == hwad)
@@ -352,15 +355,21 @@ int register_temps()
 				break;
 				}
 			}
+		if(tcor[i].hwaddr == 0)
+			{
+			tcor[i].hwaddr = hwad;
+			tcor[i].a = 1.;
+			tcor[i].b = 0.;
+			}
 		}
 	if(num_temp_devices > 1)
 		{
-		sprintf(mbuf, "%d\1More temp probes found.\nTemp measuremens will be taken from probe[0]: %llu", ERROR_MORE_SENSORS, tcor[0].hwaddr);
+		sprintf(mbuf, "More temp probes found.\nTemp measuremens will be taken from probe[0]: %llu", tcor[0].hwaddr);
 		publish_topic(TOPIC_ERROR, mbuf, 0, 0);
 		}
 	else if(num_temp_devices == 0)
 		{
-		sprintf(mbuf, "%d\1No temp probe found", ERROR_NO_SENSORS);
+		sprintf(mbuf, "No temp probe found");
 		publish_topic(TOPIC_ERROR, mbuf, 0, 0);
 		ret = ESP_FAIL;
 		//do_state_screen();
