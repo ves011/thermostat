@@ -68,12 +68,11 @@ void app_main(void)
     //xQueueSend(ui_cmd_q, &msg, 0);
 	spiffs_storage_check();
 	initialize_nvs();
-	
+	get_nvs_conf();
 	get_all_nvscerts();
-	
-	rw_dev_config(PARAM_READ);
 	msg.val = 1;
     xQueueSend(ui_cmd_q, &msg, 0);
+    register_wifi();
 	if(!wifi_join(NULL, NULL, JOIN_TIMEOUT_MS))
 		{
 		ESP_LOGI(TAG, "Failed to connect to %s", dev_conf.sta_ssid);
@@ -96,7 +95,6 @@ void app_main(void)
 
 	esp_console_register_help_command();
 	register_system();
-	register_wifi();
 	sync_NTP_time();
 	msg.val = 4;
     xQueueSend(ui_cmd_q, &msg, 0);
