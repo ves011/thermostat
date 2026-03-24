@@ -6,7 +6,7 @@
 #include <driver/gpio.h>
 #include "esp_log.h"
 #include "esp_console.h"
-
+#include "esp_heap_caps.h"
 #include "ntp_sync.h"
 #include "project_specific.h"
 #include "common_defines.h"
@@ -30,6 +30,15 @@ static char *TAG = "thermo";
 //const char *nvs_cl_crt;
 //size_t nvs_cl_crt_sz;
 
+void esp_heap_trace_alloc_hook(void* ptr, size_t size, uint32_t caps)
+	{
+  	//printf("\nheap alloc ptr: %x / size: %d / caps %x", (unsigned int)ptr, size, (unsigned int)caps);
+	}
+void esp_heap_trace_free_hook(void* ptr)
+	{
+  	//printf("\nheap free ptr: %x ", (unsigned int)ptr);
+	}
+
 static void initialize_nvs(void)
 	{
 	esp_err_t err = nvs_flash_init();
@@ -45,7 +54,7 @@ static void initialize_nvs(void)
 void app_main(void)
 	{
 	msg_t msg;
-	int temps_probe;
+	int temps_probe = ESP_FAIL;
 	msg.source = BOOT_MSG;
     dev_conf.cs = CONSOLE_OFF;
 	setenv("TZ","EET-2EEST,M3.4.0/03,M10.4.0/04",1);
@@ -68,11 +77,15 @@ void app_main(void)
     //xQueueSend(ui_cmd_q, &msg, 0);
 	spiffs_storage_check();
 	initialize_nvs();
+	my_printf("1 min heap size: %u", heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
 	get_nvs_conf();
+	my_printf("2 min heap size: %u", heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
 	get_all_nvscerts();
+	my_printf("3 min heap size: %u", heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
 	msg.val = 1;
     xQueueSend(ui_cmd_q, &msg, 0);
     register_wifi();
+    my_printf("4 min heap size: %u", heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
 	if(!wifi_join(NULL, NULL, JOIN_TIMEOUT_MS))
 		{
 		ESP_LOGI(TAG, "Failed to connect to %s", dev_conf.sta_ssid);
@@ -84,22 +97,28 @@ void app_main(void)
 	
 	//tcp_log_evt_queue = NULL;
 	tcp_log_init();
+	my_printf("5 min heap size: %u", heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
 	esp_log_set_vprintf(my_log_vprintf);
 	msg.val = 2;
     xQueueSend(ui_cmd_q, &msg, 0);
 	//sync_NTP_time();
 	if(mqtt_start() != ESP_OK)
 		esp_restart();
+	my_printf("6 min heap size: %u", heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
 	msg.val = 3;
     xQueueSend(ui_cmd_q, &msg, 0);
 
 	esp_console_register_help_command();
+	my_printf("7 min heap size: %u", heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
 	register_system();
+	my_printf("8 min heap size: %u", heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
 	sync_NTP_time();
 	msg.val = 4;
     xQueueSend(ui_cmd_q, &msg, 0);
 	temps_probe = register_temps();
+	my_printf("9 min heap size: %u", heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
 	register_config();
+	my_printf("10 min heap size: %u", heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
 	msg.val = 5;
     xQueueSend(ui_cmd_q, &msg, 0);
 	controller_op_registered = 1;
@@ -126,7 +145,7 @@ void app_main(void)
 
 #elif defined(CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG)
     esp_console_dev_usb_serial_jtag_config_t hw_config = ESP_CONSOLE_DEV_USB_SERIAL_JTAG_CONFIG_DEFAULT();
-    repl_config.task_stack_size = 6020;
+    repl_config.task_stack_size = 4096;
     ESP_ERROR_CHECK(esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &repl));
     //ESP_LOGI(TAG, "console stack: %d", repl_config.task_stack_size);
 #else

@@ -11,8 +11,15 @@
 #define CONFIG_STORE_HISTORY					1
 #define CONFIG_CONSOLE_MAX_COMMAND_LINE_LENGTH	1024
 
+#define	APP_CFG_NS			"appcfg"
+#define	TEMPTARGET			"temp.target"
+#define TEMPHIST			"temp.hist"
+#define TEMPFREEZE			"temp.freeze"
+#define	ACTCYCLE			"act_cycle"
+#define	MAXACTCYCLE			"max_act_cycle"
+
 #define ACTIVE_CONTROLLER	(THERMOSTAT)
-#define TEST_BUILD (0)
+#define TEST_BUILD (1)
 #if TEST_BUILD == 1
 	#define WITH_CONSOLE
 	#define TEST1
