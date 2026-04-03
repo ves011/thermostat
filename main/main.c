@@ -7,6 +7,8 @@
 #include "esp_log.h"
 #include "esp_console.h"
 #include "esp_heap_caps.h"
+#include "freertos/idf_additions.h"
+#include "freertos/projdefs.h"
 #include "ntp_sync.h"
 #include "project_specific.h"
 #include "common_defines.h"
@@ -30,15 +32,6 @@ static char *TAG = "thermo";
 //const char *nvs_cl_crt;
 //size_t nvs_cl_crt_sz;
 
-void esp_heap_trace_alloc_hook(void* ptr, size_t size, uint32_t caps)
-	{
-  	//printf("\nheap alloc ptr: %x / size: %d / caps %x", (unsigned int)ptr, size, (unsigned int)caps);
-	}
-void esp_heap_trace_free_hook(void* ptr)
-	{
-  	//printf("\nheap free ptr: %x ", (unsigned int)ptr);
-	}
-
 static void initialize_nvs(void)
 	{
 	esp_err_t err = nvs_flash_init();
@@ -54,6 +47,7 @@ static void initialize_nvs(void)
 void app_main(void)
 	{
 	msg_t msg;
+	int count;
 	int temps_probe = ESP_FAIL;
 	msg.source = BOOT_MSG;
     dev_conf.cs = CONSOLE_OFF;
@@ -68,57 +62,54 @@ void app_main(void)
 	if(!lvgl_task_handle)
 		{
 		ESP_LOGE(TAG, "Unable to start lvgl task");
-		esp_restart();
+		my_esp_restart();
 		}
+	count = 0;
 	while(init_lcd_completed == 0)
-		usleep(10000);
+		{
+		count++;
+		if(count >= 10)
+			{
+			ESP_LOGE(TAG, "lcd init not completed in 5sec");
+			my_esp_restart();
+			}
+		vTaskDelay(pdMS_TO_TICKS(500));
+		}
 
 	msg.val = 0;
-    //xQueueSend(ui_cmd_q, &msg, 0);
+    xQueueSend(ui_cmd_q, &msg, 0);
 	spiffs_storage_check();
 	initialize_nvs();
-	my_printf("1 min heap size: %u", heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
 	get_nvs_conf();
-	my_printf("2 min heap size: %u", heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
 	get_all_nvscerts();
-	my_printf("3 min heap size: %u", heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
 	msg.val = 1;
     xQueueSend(ui_cmd_q, &msg, 0);
-    register_wifi();
-    my_printf("4 min heap size: %u", heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
+    
+    initialise_wifi();
+    count = -1;
 	if(!wifi_join(NULL, NULL, JOIN_TIMEOUT_MS))
-		{
 		ESP_LOGI(TAG, "Failed to connect to %s", dev_conf.sta_ssid);
-		}
 	else
-		{
 		ESP_LOGI(TAG, "Connected to %s", dev_conf.sta_ssid);
-		}
-	
-	//tcp_log_evt_queue = NULL;
-	tcp_log_init();
-	my_printf("5 min heap size: %u", heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
+	mqtt_start();
+	tcp_log_init(dev_conf.cs);
 	esp_log_set_vprintf(my_log_vprintf);
+
 	msg.val = 2;
     xQueueSend(ui_cmd_q, &msg, 0);
-	//sync_NTP_time();
-	if(mqtt_start() != ESP_OK)
-		esp_restart();
-	my_printf("6 min heap size: %u", heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
+	
 	msg.val = 3;
     xQueueSend(ui_cmd_q, &msg, 0);
 
 	esp_console_register_help_command();
-	my_printf("7 min heap size: %u", heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
+
 	register_system();
-	my_printf("8 min heap size: %u", heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
+	register_wifi();
 	sync_NTP_time();
 	msg.val = 4;
     xQueueSend(ui_cmd_q, &msg, 0);
 	temps_probe = register_temps();
-	my_printf("9 min heap size: %u", heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
-	register_config();
-	my_printf("10 min heap size: %u", heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
+	//register_config();
 	msg.val = 5;
     xQueueSend(ui_cmd_q, &msg, 0);
 	controller_op_registered = 1;

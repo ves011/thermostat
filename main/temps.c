@@ -5,12 +5,13 @@
  *      Author: viorel_serbu
  */
 
-#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include "esp_err.h"
+#include "nvs.h"
 #include "driver/gpio.h"
 #include "ds18b20_types.h"
 #include "esp_console.h"
@@ -19,14 +20,14 @@
 #include "esp_timer.h"
 #include "freertos/projdefs.h"
 #include "common_defines.h"
-#include "external_defs.h"
+//#include "external_defs.h"
 #include "hal/gpio_types.h"
 #include "mqtt_ctrl.h"
 #include "project_specific.h" 
 #include "ds18b20.h"
 #include "lcd.h"
-#include "state_screen.h"
-#include "config.h"
+#include "utils.h"
+//#include "state_screen.h"
 #include "temps.h"
 
 static int num_temp_devices;
@@ -46,12 +47,16 @@ static int current_state;
 static int act_state;
 time_t last_act_op, open_maint_ts;
 
+static void get_thermostat_conf();
+
+
 //esp_timer_handle_t act_timer;		// timer used to measure ACT_OPERATING_TIME interval
 
 struct
 	{
     struct arg_str *op;
     struct arg_int *arg;
+    struct arg_str *arg1;
     struct arg_end *end;
 	} t_args;
 
@@ -164,17 +169,8 @@ void tmon(void *pvParams)
 							
 							
 							}
-						//else
-						//	{
-						//	ESP_LOGE(TAG, "Inconsistent HW ADDR @ index 0 / Expected %llx found %llx", hwad, tcor[i].hwaddr);
-						//	sprintf(mbuf, "%d\1HW address error: expected %llx found %llx", ERROR_HW_ADDR, hwad, tcor[i].hwaddr);
-						//	publish_topic(TOPIC_ERROR, mbuf, 0, 0);
-						//	continue;
-						//	}
 						}
 					nt++;
-					//ESP_LOGI(TAG, "%s", obuf);
-					//publish_topic(TOPIC_MONITOR, mbuf, 0, 0);
 					}
 				// check for maintenance time
 				if(open_maint_ts == 0)
@@ -223,7 +219,6 @@ void tmon(void *pvParams)
 	}
 void get_temp(int idx, float *temperature)
 	{
-	//ESP_LOGI(TAG, "get temp: idx = %d", idx);
 	ESP_ERROR_CHECK(ds18b20_trigger_temperature_conversion(idx));
 	ESP_ERROR_CHECK(ds18b20_get_temperature(idx, temperature));
 	ESP_LOGI(TAG, "temperature read from DS18B20[%d]: %.2fC", idx, *temperature);
@@ -241,7 +236,7 @@ int do_temp(int argc, char **argv)
 	int nerrors = arg_parse(argc, argv, (void **)&t_args);
 	if (nerrors != 0)
 		{
-		arg_print_errors(stderr, t_args.end, argv[0]);
+		//arg_print_errors(stderr, t_args.end, argv[0]);
 		return ESP_FAIL;
 		}
 	if(strcmp(t_args.op->sval[0], "r") == 0)
@@ -324,6 +319,65 @@ int do_temp(int argc, char **argv)
 			}
 		ESP_LOGI(TAG, "Actuator state = %d", act_state);
 		}
+	// t conf 2100 target
+	else if(strcmp(t_args.op->sval[0], "conf") == 0)
+		{
+		if(t_args.arg->count) // set target value in NVS
+			{
+			int val = t_args.arg->ival[0];
+			if(t_args.arg1->count)
+				{
+				char keyname[18] = {0};
+				if(!strcmp(t_args.arg1->sval[0], TARGET_TEMP))
+					strcpy(keyname, TARGET_TEMP);
+				else if(!strcmp(t_args.arg1->sval[0], HYSTRESIS))
+					strcpy(keyname, HYSTRESIS);
+				else if(!strcmp(t_args.arg1->sval[0], FREEZE_TEMP))
+					strcpy(keyname, FREEZE_TEMP);
+				else if(!strcmp(t_args.arg1->sval[0], ONOFF_CYCLE))
+					strcpy(keyname, ONOFF_CYCLE);
+				else if(!strcmp(t_args.arg1->sval[0], MAINT_CYCE))
+					strcpy(keyname, MAINT_CYCE);
+				if(strlen(keyname))
+					{
+					nvs_handle_t handle;
+					int err;
+					if((err = nvs_open(THERMOSTATNS, NVS_READWRITE, &handle)) == ESP_OK)
+						{
+						err = nvs_set_i32(handle, keyname, val);
+						if(err == ESP_OK)
+							{
+							if(!strcmp(t_args.arg1->sval[0], TARGET_TEMP))
+								target_temp = val / 100.;
+							else if(!strcmp(t_args.arg1->sval[0], HYSTRESIS))
+								hist_temp = val / 100.;
+							else if(!strcmp(t_args.arg1->sval[0], FREEZE_TEMP))
+								freeze_temp = val / 100.;
+							else if(!strcmp(t_args.arg1->sval[0], ONOFF_CYCLE))
+								on_off_time = val;
+							else if(!strcmp(t_args.arg1->sval[0], MAINT_CYCE))
+								maint_time = val;
+							}
+						else
+							ESP_LOGI(TAG, "Error setting %s value: %s / %d", keyname, esp_err_to_name(err), err);
+
+						nvs_commit(handle);
+						nvs_close(handle);
+						}	
+					}
+				else
+					ESP_LOGI(TAG, "Unknown configuration target: %s", t_args.arg1->sval[0]);
+				}	
+			}
+		else
+			{
+			ESP_LOGI(TAG, "configuration - target temp (%s) : %.2f", TARGET_TEMP, target_temp);
+			ESP_LOGI(TAG, "configuration - hysteresis (%s)  : %.2f", HYSTRESIS, hist_temp);
+			ESP_LOGI(TAG, "configuration - freeze temp (%s) : %.2f", FREEZE_TEMP, freeze_temp);
+			ESP_LOGI(TAG, "configuration - on/off cycle (%s): %d", ONOFF_CYCLE, on_off_time);
+			ESP_LOGI(TAG, "configuration - on/off cycle (%s): %d", MAINT_CYCE, maint_time);
+			}
+		}
 	return ESP_OK;
 	}
 int register_temps()
@@ -338,7 +392,8 @@ int register_temps()
     gpio_config(&io_conf);
     gpio_set_level(ACT_CMD_PIN, 0);
 	num_temp_devices = ds18b20_init(DS18B20_RESOLUTION_12B);
-	get_configuration();
+	get_thermostat_conf();
+	//get_configuration();
 	current_state = OPERATIONAL_STATE;
 	act_state = -1;
 	for (int i = 0; i < num_temp_devices; i++)
@@ -378,23 +433,17 @@ int register_temps()
 		{
 		ESP_LOGI(TAG, "using 1 temp sensor");
 		}
-	/*
-	esp_timer_create_args_t act_timer_args = 
-		{
-    	.callback = &act_timer_callback,
-        .name = "act_timer"
-    	};
-    ESP_ERROR_CHECK(esp_timer_create(&act_timer_args, &act_timer));
-    */
+
     last_act_op = time(NULL);
     open_maint_ts = 0; 
 	t_args.op = arg_str1(NULL, NULL, "<op>", "op: r | s");
 	t_args.arg= arg_int0(NULL, NULL, "<arg>", "set sensor #");
+	t_args.arg1 = arg_str0(NULL, NULL, "target", "target value");
 	t_args.end = arg_end(1);
 	const esp_console_cmd_t t_cmd =
 		{	
 		.command = "t",
-		.help = "read (r) / write (w) to/from AD",
+		.help = "read (r)|start|stop|conf value target",
 		.hint = NULL,
 		.func = &do_temp,
 		.argtable = &t_args
@@ -404,7 +453,7 @@ int register_temps()
 	if(xTaskCreate(tmon, "tmon_task", 8192, NULL, USER_TASK_PRIORITY, NULL) != pdPASS)
 		{
 		ESP_LOGI(TAG, "Unable to create temp mon task");
-		ret = ESP_FAIL;
+		my_esp_restart();
 		}
 	return ret;
 	}
@@ -431,4 +480,90 @@ void act_op(int op, float t, uint64_t hwad)
 			}
 		}
 	}
+static void get_thermostat_conf()
+	{
+	nvs_handle handle;
+	int err;
+	int32_t val;
 
+	target_temp = DEFAULT_TARGET_TEMP;
+	hist_temp = DEFAULT_HISTEREZIS;
+	freeze_temp = DEFAULT_FREEZET;
+	on_off_time = DEFAULT_ONOFF_CYCLE;
+	maint_time = DEFAULT_MAINTD;
+
+	if((err = nvs_open(THERMOSTATNS, NVS_READONLY, &handle)) == ESP_OK)
+		{
+		err = nvs_get_i32(handle, TARGET_TEMP, &val);
+		if(err == ESP_OK)
+			target_temp = val / 100.;
+		else
+			ESP_LOGI(TAG, "Error getting %s value. Taking default: %.2f (%s / %d)", TARGET_TEMP, target_temp, esp_err_to_name(err), err);
+		err = nvs_get_i32(handle, HYSTRESIS, &val);
+		if(err == ESP_OK)
+			hist_temp = val / 100.;
+		else
+			ESP_LOGI(TAG, "Error getting %s value. Taking default: %.2f (%s / %d)", HYSTRESIS, hist_temp, esp_err_to_name(err), err);
+		err = nvs_get_i32(handle, ONOFF_CYCLE, &val);
+		if(err == ESP_OK)
+			on_off_time = val;
+		else
+			ESP_LOGI(TAG, "Error getting %s value. Taking default: %d (%s / %d)", ONOFF_CYCLE, on_off_time, esp_err_to_name(err), err);
+		err = nvs_get_i32(handle, FREEZE_TEMP, &val);
+		if(err == ESP_OK)
+			freeze_temp = val / 100.;
+		else
+			ESP_LOGI(TAG, "Error getting %s value. Taking default: %.2f (%s / %d)", FREEZE_TEMP, freeze_temp, esp_err_to_name(err), err);
+		err = nvs_get_i32(handle, MAINT_CYCE, &val);
+		if(err == ESP_OK)
+			maint_time = val;
+		else
+			ESP_LOGI(TAG, "Error getting %s value. Taking default: %d (%s / %d)", MAINT_CYCE, maint_time, esp_err_to_name(err), err);
+		nvs_close(handle);
+		}
+	else
+		ESP_LOGI(TAG, "Error getting thermostat configuration: %s / %d", esp_err_to_name(err), err);
+	}
+	
+void set_configuration(int targett, int histt, int freezet, int onoffc, int maintt)
+	{
+	nvs_handle handle;
+	int err;
+	if((err = nvs_open(THERMOSTATNS, NVS_READWRITE, &handle)) == ESP_OK)
+		{
+		err = nvs_set_i32(handle, TARGET_TEMP, targett);
+		if(err != ESP_OK)
+			ESP_LOGI(TAG, "Error setting %s value: %s / %d", TARGET_TEMP, esp_err_to_name(err), err);
+		else
+			target_temp = targett / 100.;
+		
+		err = nvs_set_i32(handle, HYSTRESIS, histt);
+		if(err != ESP_OK)
+			ESP_LOGI(TAG, "Error setting %s value: %s / %d", HYSTRESIS, esp_err_to_name(err), err);
+		else
+			hist_temp = histt / 100.;
+		
+		err = nvs_set_i32(handle, FREEZE_TEMP, freezet);
+		if(err != ESP_OK)
+			ESP_LOGI(TAG, "Error setting %s value: %s / %d", FREEZE_TEMP, esp_err_to_name(err), err);
+		else
+		 	freeze_temp = freezet / 100.;
+	
+		err = nvs_set_i32(handle, ONOFF_CYCLE, onoffc);
+		if(err != ESP_OK)
+			ESP_LOGI(TAG, "Error setting %s value: %s / %d", ONOFF_CYCLE, esp_err_to_name(err), err);
+		else
+			on_off_time = onoffc;
+		
+		err = nvs_set_i32(handle, MAINT_CYCE, maintt);
+		if(err != ESP_OK)
+			ESP_LOGI(TAG, "Error setting %s value: %s / %d", MAINT_CYCE, esp_err_to_name(err), err);
+		else
+			maint_time = maintt;
+					
+		nvs_commit(handle);
+		nvs_close(handle);
+		}
+	else
+		ESP_LOGI(TAG, "Error setting thermostat configuration: %s / %d", esp_err_to_name(err), err);
+	}

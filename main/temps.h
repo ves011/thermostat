@@ -8,7 +8,28 @@
 #ifndef MAIN_TEMPS_H_
 #define MAIN_TEMPS_H_
 
-#include <inttypes.h>
+//#include <inttypes.h>
+#include <freertos/FreeRTOS.h>
+
+/*
+ NVS configuration: namespace name and keys name
+*/
+#define THERMOSTATNS		"thermostat"
+#define TARGET_TEMP			"target-temp"		
+#define HYSTRESIS			"hysteresis"
+#define ONOFF_CYCLE			"on/off-cycle"
+#define MAINT_CYCE			"maint-cycle"
+#define FREEZE_TEMP			"freeze-temp" 
+
+/*
+ default cofiguration values
+*/
+#define DEFAULT_TARGET_TEMP		21			// target temperature
+#define DEFAULT_ONOFF_CYCLE		300			// duration of on/off cycle in seconds
+#define DEFAULT_HYSTERESIS		0.5			// temperature histerezis
+#define DEFAULT_MAINT			14			// maximum interval between on/off cycles
+#define DEFAULT_FREEZET			5			// open actuator below this temp 
+
 
 //#define MAX_TEMP_DEVICES   (10)
 #define DS18B20_RESOLUTION   (DS18B20_RESOLUTION_12_BIT)
@@ -23,6 +44,7 @@ int register_temps();
 int do_temp(int argc, char **argv);
 void get_temp(int idx, float *temperature);
 uint64_t get_t_hwadd(int idx);
+void set_configuration(int targett, int histt, int freezet, int onoffc, int maintt);
 /*
 #define NTEMP		9
 

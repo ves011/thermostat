@@ -8,19 +8,19 @@
 #include <stdio.h>
 #include "core/lv_obj_style.h"
 #include "driver/gpio.h"
-#include "esp_log.h"
+//#include "esp_log.h"
 //#include "esp_netif.h"
 #include <string.h>
 #include <sys/time.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/queue.h"
+//#include "freertos/FreeRTOS.h"
+//#include "freertos/queue.h"
 #include "lv_api_map_v9_1.h"
 #include "misc/lv_anim.h"
 #include "misc/lv_anim_timeline.h"
 #include "misc/lv_color.h"
 #include "project_specific.h"
 #include "common_defines.h"
-#include "config.h"
+//#include "config.h"
 #include "temps.h"
 #include "rot_enc.h"
 #include "mqtt_ctrl.h"
@@ -142,7 +142,7 @@ static void draw_main_screen()
 	strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M", &timeinfo);
 					
     ui_dtime = lv_label_create(ui_mainscreen);
-    lv_obj_set_width(ui_dtime, 140); 
+    lv_obj_set_width(ui_dtime, 150); 
     lv_obj_set_height(ui_dtime, 12); 
     lv_obj_set_x(ui_dtime, 5);
     lv_obj_set_y(ui_dtime, 10);
@@ -282,7 +282,7 @@ void do_main_screen(int active_screen)
 	int therm_state = MEASURING_STATE;
 	int nw_connection_state = get_MQTT_connection_state(NULL);
 	float t;
-	float starget_temp = 0;
+	float startget_temp = 0;
 	if(ui_mainscreen == NULL)
 		draw_main_screen();
 	
@@ -386,8 +386,8 @@ void do_main_screen(int active_screen)
 						{
 						if(therm_state == MEASURING_STATE) // enter set state
 							{
-							starget_temp = target_temp;
-							display_values(starget_temp, starget_temp - hist_temp, starget_temp + hist_temp, 1);
+							startget_temp = target_temp;
+							display_values(startget_temp, startget_temp - hist_temp, startget_temp + hist_temp, 1);
 							therm_state = SET_STATE;
 							// start inactivity set
 							set_inactivity = 1;
@@ -395,8 +395,8 @@ void do_main_screen(int active_screen)
 						else if(therm_state == SET_STATE) // exit set state
 							{
 							// save target temp set before (if changed)
-							if(starget_temp != target_temp)
-								set_configuration((int)(starget_temp * 100.), (int)(hist_temp * 100.), (int)(freeze_temp * 100.), on_off_time, maint_time);
+							if(startget_temp != target_temp)
+								set_configuration((int)(startget_temp * 100.), (int)(hist_temp * 100.), (int)(freeze_temp * 100.), on_off_time, maint_time);
 							get_temp(0, &t);
 							display_values(t, target_temp - hist_temp, target_temp + hist_temp, 0);
 	    					therm_state = MEASURING_STATE;
@@ -414,15 +414,15 @@ void do_main_screen(int active_screen)
 					if(therm_state == SET_STATE)
 						{
 						
-						if(msg.val == K_ROT_LEFT && starget_temp > 10.)
+						if(msg.val == K_ROT_LEFT && startget_temp > 10.)
 							{
-							starget_temp -= 0.1;
-							display_values(starget_temp, starget_temp - hist_temp, starget_temp + hist_temp, 2);
+							startget_temp -= 0.1;
+							display_values(startget_temp, startget_temp - hist_temp, startget_temp + hist_temp, 2);
 		    				}
-						if(msg.val == K_ROT_RIGHT && starget_temp < 28.)
+						if(msg.val == K_ROT_RIGHT && startget_temp < 28.)
 							{
-							starget_temp += 0.1;
-							display_values(starget_temp, starget_temp - hist_temp, starget_temp + hist_temp, 2);
+							startget_temp += 0.1;
+							display_values(startget_temp, startget_temp - hist_temp, startget_temp + hist_temp, 2);
 		    				}
 						}
 					break;

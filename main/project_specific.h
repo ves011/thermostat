@@ -11,22 +11,14 @@
 #define CONFIG_STORE_HISTORY					1
 #define CONFIG_CONSOLE_MAX_COMMAND_LINE_LENGTH	1024
 
-#define	APP_CFG_NS			"appcfg"
-#define	TEMPTARGET			"temp.target"
-#define TEMPHIST			"temp.hist"
-#define TEMPFREEZE			"temp.freeze"
-#define	ACTCYCLE			"act_cycle"
-#define	MAXACTCYCLE			"max_act_cycle"
-
 #define ACTIVE_CONTROLLER	(THERMOSTAT)
-#define TEST_BUILD (1)
+#define TEST_BUILD 			0
 #if TEST_BUILD == 1
 	#define WITH_CONSOLE
 	#define TEST1
 	#define CTRL_DEV_ID					(98)
 #else
 	#define CTRL_DEV_ID					(1)
-	#define WITH_CONSOLE
 #endif
 
 #define COMM_PROTO			MQTT_PROTO
@@ -34,7 +26,13 @@
 
 
 #define WIFI_STA_ON			(1)
-#define WIFI_AP_ON			(0)
+#define WIFI_AP_ON			(0)		//have to be enabled also in sdkconfig
+
+
+#define WIFI_CONNECTED_BIT  BIT0
+#define IP_CONNECTED_BIT    BIT1
+#define MQTT_CONNECTED_BIT  BIT2
+
 
 /* GPIOs */
 #define DS18B20_PIN       	(1) //(CONFIG_ONE_WIRE_GPIO)
@@ -68,23 +66,13 @@
 #define SET_STATE			2
 #define MEASURING_STATE		1
 #define ACT_TEMP			2
-//#define NW_STATE			1
-//#define TMIN_VAL			3
-//#define TMAX_VAL			4
 #define HEATING_ONOFF		5
-//#define TEMP_SET			6
 #define INACTIVE_SET		7
-//#define INACTIVE_LCD		8
+
 
 #define SET_INACTIVITY_TIME	10
 #define LCD_INACTIVITY_TIME	12
 
-#define CONFIG_FILE				"config.txt"
-#define TARGET_TXT				"target temp(deg C): "
-#define HISTREZIS_TXT			"target temp histerezis(deg C): "
-#define ONOFF_TXT				"ON/OFF cycle duration(sec): "
-#define MAINTENANCE_TXT			"maximum interval between actuator ON/OFF cycles (days): "
-#define FREEZE_TXT				"freezing protect circuit temp(degC): "
 /*
  default cofiguration values
 */

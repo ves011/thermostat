@@ -7,43 +7,29 @@
  
 #include <stdio.h>
 #include "core/lv_obj_style.h"
-#include "driver/gpio.h"
-#include "esp_log.h"
-//#include "esp_netif.h"
 #include <string.h>
 #include <sys/time.h>
-#include "esp_console.h"
-#include "argtable3/argtable3.h"
-//#include "font/lv_font.h"
-//#include "lv_api_map_v8.h"
+#include "freertos/idf_additions.h"
 #include "lv_api_map_v9_1.h"
 #include "misc/lv_anim.h"
-//#include "misc/lv_anim_timeline.h"
 #include "misc/lv_color.h"
 #include "lv_conf.h"
-#include "project_specific.h"
 #include "common_defines.h"
-#include "external_defs.h"
-#include "config.h"
-#include "temps.h"
-#include "rot_enc.h"
 #include "ui.h"
 #include "lcd.h"
 #include "state_screen.h"
 #include "option_screen.h"
 
 #define NITEMS		3
-lv_obj_t *ui_label[NITEMS];
-lv_anim_t opt_anim[NITEMS];
-lv_obj_t *ui_optionscreen = NULL;
+static lv_obj_t *ui_label[NITEMS];
+static lv_anim_t opt_anim[NITEMS];
+static lv_obj_t *ui_optionscreen = NULL;
 
 lv_anim_t * label_Animation(int idx)
 	{
-    //lv_anim_t * out_anim;
     ui_anim_user_data_t * PropertyAnimation_0_user_data = lv_malloc(sizeof(ui_anim_user_data_t));
     PropertyAnimation_0_user_data->target = ui_label[idx];
     PropertyAnimation_0_user_data->val = -1;
-    //lv_anim_t PropertyAnimation_0;
     lv_anim_init(&opt_anim[idx]); 
     lv_anim_set_time(&opt_anim[idx], 1000);
     lv_anim_set_user_data(&opt_anim[idx], PropertyAnimation_0_user_data);
@@ -58,8 +44,6 @@ lv_anim_t * label_Animation(int idx)
     lv_anim_set_repeat_delay(&opt_anim[idx], 0);
     lv_anim_set_early_apply(&opt_anim[idx], false);
     lv_anim_set_get_value_cb(&opt_anim[idx], &_ui_anim_callback_get_opacity);
-    //out_anim = lv_anim_start(&opt_anim[idx]);
-
     return NULL;
 	}
 
@@ -94,19 +78,7 @@ static void draw_option_screen()
     lv_obj_set_style_text_align(ui_restartop, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_restartop, &lv_font_montserrat_30, LV_PART_MAIN | LV_STATE_DEFAULT);
 	ui_label[1] = ui_restartop;
-/*
-    lv_obj_t *ui_bootota = lv_label_create(ui_optionscreen);
-    lv_obj_set_width(ui_bootota, 162);
-    lv_obj_set_height(ui_bootota, 40);
-    lv_obj_set_x(ui_bootota, 82);
-    lv_obj_set_y(ui_bootota, 90);
-    lv_label_set_text(ui_bootota, "OTA");
-    lv_obj_set_style_text_color(ui_bootota, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui_bootota, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_align(ui_bootota, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_bootota, &lv_font_montserrat_30, LV_PART_MAIN | LV_STATE_DEFAULT);
-	ui_label[2] = ui_bootota;
-*/	 
+ 
     lv_obj_t *ui_cancel = lv_label_create(ui_optionscreen);
     lv_obj_set_width(ui_cancel, 162);
     lv_obj_set_height(ui_cancel, 40);
@@ -121,9 +93,6 @@ static void draw_option_screen()
     
     for(int i = 0; i < NITEMS; i++)
     	label_Animation(i);
-        
-    
-	
 	}
 
 void do_option_screen()
@@ -139,7 +108,6 @@ void do_option_screen()
 	_lock_release(&lvgl_api_lock);
 	anim = lv_anim_start(&opt_anim[opt_sel]);
 	_lock_release(&lvgl_api_lock);
-	//char buf[40];
 
 	while(1)
 		{
@@ -154,8 +122,6 @@ void do_option_screen()
 							{
 							_lock_acquire(&lvgl_api_lock);
 							lv_anim_pause(anim);
-							//lv_obj_del(ui_optionscreen);
-							//ui_optionscreen = NULL;
 							_lock_release(&lvgl_api_lock);
 							}
 						return;
@@ -167,15 +133,9 @@ void do_option_screen()
 						 _lock_acquire(&lvgl_api_lock);
 						lv_scr_load_anim(ui_optionscreen, LV_SCR_LOAD_ANIM_MOVE_LEFT, 100, 0, false);
 						_lock_release(&lvgl_api_lock);
-
-						//_lock_acquire(&lvgl_api_lock);
-						//anim = lv_anim_start(&opt_anim[opt_sel]);
-						//_lock_release(&lvgl_api_lock);
 						}
 					else if(opt_sel == 1)
 						esp_restart();
-					//else if(opt_sel == 0)
-					//	do_ota();
 					break;
 				case K_ROT:
 					_lock_acquire(&lvgl_api_lock);
@@ -189,13 +149,11 @@ void do_option_screen()
 					else
  						opt_sel++;
 					if(opt_sel < 0) opt_sel = NITEMS - 1;
-					if(opt_sel > 3) opt_sel = 0;
+					if(opt_sel >= NITEMS) opt_sel = 0;
 					anim = lv_anim_start(&opt_anim[opt_sel]);
 					_lock_release(&lvgl_api_lock);
 					break;
 				}
 			}
 		}
-	//lv_obj_del(ui_optionscreen);
-	//ui_optionscreen = NULL;
 	}

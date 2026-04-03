@@ -4,7 +4,7 @@
 idf_component_register(
 					   SRCS "main.c"
 							"temps.c"
-							"config.c"
+#							"config.c"
 							"../lcd/lcd.c"
 
 							"../lcd/styles.c"
