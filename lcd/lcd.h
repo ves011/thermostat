@@ -29,7 +29,5 @@ extern _lock_t lvgl_api_lock;
 extern int init_lcd_completed;
 
 void lvgl_task(void *pvParameters);
-//void lcd_init();
-
 
 #endif /* LCD_LCD_H_ */

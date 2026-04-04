@@ -6,7 +6,6 @@
 #include <driver/gpio.h>
 #include "esp_log.h"
 #include "esp_console.h"
-#include "esp_heap_caps.h"
 #include "freertos/idf_additions.h"
 #include "freertos/projdefs.h"
 #include "ntp_sync.h"
@@ -20,7 +19,6 @@
 #include "mqtt_ctrl.h"
 #include "lcd.h"
 #include "temps.h"
-#include "config.h"
 
 int restart_in_progress;
 int controller_op_registered;
@@ -28,9 +26,6 @@ int controller_op_registered;
 #define PROMPT_STR	"thermo"
 
 static char *TAG = "thermo";
-
-//const char *nvs_cl_crt;
-//size_t nvs_cl_crt_sz;
 
 static void initialize_nvs(void)
 	{
@@ -109,7 +104,6 @@ void app_main(void)
 	msg.val = 4;
     xQueueSend(ui_cmd_q, &msg, 0);
 	temps_probe = register_temps();
-	//register_config();
 	msg.val = 5;
     xQueueSend(ui_cmd_q, &msg, 0);
 	controller_op_registered = 1;

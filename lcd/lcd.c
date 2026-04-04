@@ -7,38 +7,23 @@
 
 #include <stdio.h>
 #include <sys/unistd.h>
-//#include "esp_debug_helpers.h"
 #include "freertos/FreeRTOS.h"
-//#include "freertos/projdefs.h"
+#include "freertos/projdefs.h"
 #include "freertos/task.h"
-//#include "freertos/freertos.h"
-#include "freertos/queue.h"
-#include "freertos/semphr.h"
 #include "esp_timer.h"
 #include "esp_lcd_panel_io.h"
-//#include "esp_lcd_panel_vendor.h"
 #include "esp_lcd_panel_ops.h"
 #include "driver/gpio.h"
-//#include "driver/spi_master.h"
 #include "esp_err.h"
 #include "esp_log.h"
-#include "esp_netif.h"
-//#include "esp_spiffs.h"
-//#include "mqtt_client.h"
-//#include "esp_lcd_ili9341.h"
 #include "sys/lock.h"
 #include "time.h"
-//#include "unistd.h"
-//#include "driver/gptimer.h"
-
 #include "lvgl.h"
-//#include "esp_lcd_ili9341.h"
+#include "utils.h"
 #include "esp_lcd_panel_st7789.h"
-
 #include "project_specific.h"
 #include "common_defines.h"
 #include "styles.h"
-//#include "rot_enc.h"
 #include "external_defs.h"
 #include "boot_screen.h"
 #include "main_screen.h"
@@ -80,47 +65,8 @@ static void clock_timer_callback(void *args)
     		set_inactivity = inactivity_set_sec = 0;
     		}
     	}
-    /*
-    if(lcd_inactivity)
-		{
-		inactivity_lcd_sec++;
-		if(inactivity_lcd_sec >= LCD_INACTIVITY_TIME)
-			{
-    		msg.source = INACTIVE_LCD;
-    		msg.val = inactivity_lcd_sec;
-    		xQueueSendFromISR(ui_cmd_q, &msg, NULL);
-    		lcd_inactivity = inactivity_lcd_sec = 0;
-    		}
-    	}
-    */
 	}
-/*	
-static void inactivity_timer_callback(void *args)
-	{
-	msg_t msg;
-	time_t ts = time(NULL);
-	if(ts % 60 == 0)
-		{
-		msg.source = CLOCK_TICK_1M;
-		xQueueSendFromISR(ui_cmd_q, &msg, NULL);
-		}
-	if(ts % )
-    msg.source = INACT_TIME;
-	
-	}
-static void config_inactivity_timer()
-	{
-	seconds = 0;
-	const esp_timer_create_args_t inactivity_timer_args =
-		{
-         .callback = &inactivity_timer_callback,
-         .name = ""
-		};
-	esp_timer_handle_t inactivity_timer;
-    ESP_ERROR_CHECK(esp_timer_create(&inactivity_timer_args, &inactivity_timer));
-    ESP_ERROR_CHECK(esp_timer_start_periodic(inactivity_timer, 1000000));//LCD_INACTIVITY_TIME));
-	}
-*/
+
 static void config_clock_timer() 
 	{
 	const esp_timer_create_args_t clock_timer_args =
@@ -139,38 +85,6 @@ static void lcd_increase_lvgl_tick(void *arg)
     lv_tick_inc(LVGL_TICK_PERIOD_MS);
 	}
 
-/* Rotate display and touch, when rotated screen in LVGL. Called when driver parameters are updated. */
-/*
-static void lcd_update_callback(lv_display_t *disp)
-	{
-    esp_lcd_panel_handle_t panel_handle = lv_display_get_user_data(disp);
-    lv_display_rotation_t rotation = lv_display_get_rotation(disp);
-
-    switch (rotation) 
-    	{
-	    case LV_DISPLAY_ROTATION_0:
-	        // Rotate LCD display
-	        esp_lcd_panel_swap_xy(panel_handle, false);
-	        esp_lcd_panel_mirror(panel_handle, true, false);
-	        break;
-	    case LV_DISPLAY_ROTATION_90:
-	        // Rotate LCD display
-	        esp_lcd_panel_swap_xy(panel_handle, true);
-	        esp_lcd_panel_mirror(panel_handle, true, true);
-	        break;
-	    case LV_DISPLAY_ROTATION_180:
-	        // Rotate LCD display
-	        esp_lcd_panel_swap_xy(panel_handle, false);
-	        esp_lcd_panel_mirror(panel_handle, false, true);
-	        break;
-	    case LV_DISPLAY_ROTATION_270:
-	        // Rotate LCD display
-	        esp_lcd_panel_swap_xy(panel_handle, true);
-	        esp_lcd_panel_mirror(panel_handle, false, false);
-	        break;
-	    }
-	}
-*/
 static void lcd_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 	{
     //lcd_update_callback(disp);
@@ -210,7 +124,7 @@ static void lcd_init()
         .miso_io_num = -1,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
-        .max_transfer_sz = LCD_H_RES * 80 * sizeof(uint16_t), //ILI9341
+        .max_transfer_sz = LCD_H_RES * 80 * sizeof(uint16_t), 	//ILI9341
         //.max_transfer_sz = 0									//ST7789
     	};
     ESP_ERROR_CHECK(spi_bus_initialize(LCD_HOST, &buscfg, SPI_DMA_CH_AUTO));
@@ -237,8 +151,6 @@ static void lcd_init()
         .bits_per_pixel = 16,
     	};
 
-    //ESP_LOGI(TAG, "Install ILI9341 panel driver");
-    //ESP_ERROR_CHECK(esp_lcd_new_panel_ili9341(io_handle, &panel_config, &panel_handle));
     ESP_LOGI(TAG, "Install ST7789 panel driver");
     ESP_ERROR_CHECK(esp_lcd_new_panel_st7789(io_handle, &panel_config, &panel_handle));
     
@@ -251,13 +163,7 @@ static void lcd_init()
 	ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(panel_handle, true));
 	
     ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel_handle, true, false));
-    //ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel_handle, true, true));
-    
-    
-    
-    
-    
-    //ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(panel_handle, true));
+
     gpio_set_level(LCD_BK_LIGHT, 1);
     
     ESP_LOGI(TAG, "Initialize LVGL library");
@@ -312,11 +218,10 @@ void lvgl_task(void *pvParameters)
 	if(!ui_cmd_q)
 		{
 		ESP_LOGE(TAG, "Unable to create UI cmd queue");
-		esp_restart();
+		my_esp_restart();
 		}
 	uint32_t time_threshold_ms = 1000 / CONFIG_FREERTOS_HZ, time_till_next = 0;
 	lcd_init();
-	//if(xTaskCreatePinnedToCore(ui_task, "ui_task", 8192, NULL, 5, NULL, 1) != pdPASS)
 	if(xTaskCreate(ui_task, "ui_task", 8192, NULL, 5, NULL) != pdPASS)
 		{
 		ESP_LOGE(TAG, "Unable to start UI task");
@@ -331,17 +236,11 @@ void lvgl_task(void *pvParameters)
 		_lock_acquire(&lvgl_api_lock);
   		time_till_next = lv_timer_handler();
   		_lock_release(&lvgl_api_lock);
-  		//if(time_till_next != LV_NO_TIMER_READY &&
-  		//	time_till_next != time_threshold_ms) 
-  		//	ESP_LOGI(TAG, "time till next %u", (unsigned int)time_till_next);
-  		
 		if(time_till_next == LV_NO_TIMER_READY) 
   			time_till_next = time_threshold_ms;
 		else
 			time_till_next = time_till_next > time_threshold_ms ? time_till_next : time_threshold_ms;
-
         usleep(1000 * time_till_next);
-        
 		}
 	}
 	

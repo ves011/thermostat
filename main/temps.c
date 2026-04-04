@@ -32,12 +32,9 @@
 
 static int num_temp_devices;
 static const char* TAG = "temps op:";
+static char *command = "t";
 QueueHandle_t temp_mon_queue;
 
-static uint64_t d_hwaddr[NTEMP] = {HWADDR0, HWADDR1, HWADDR2, HWADDR3, HWADDR4, HWADDR5, HWADDR6, HWADDR7, HWADDR8, HWADDR9, HWADDR10};
-static float ac[NTEMP] = {ACOEF0, ACOEF1, ACOEF2, ACOEF3, ACOEF4, ACOEF5, ACOEF6, ACOEF7, ACOEF8, ACOEF9, ACOEF10};
-static float bc[NTEMP] = {BCOEF0, BCOEF1, BCOEF2, BCOEF3, BCOEF4, BCOEF5, BCOEF6, BCOEF7, BCOEF8, BCOEF9, BCOEF10};
-static tcor_t tcor[MAX_TEMP_DEVICES] = {0};
 static int temp_trigger_sec;
 
 float	target_temp, hist_temp, freeze_temp;
@@ -60,21 +57,21 @@ struct
     struct arg_end *end;
 	} t_args;
 
-static void act_op(int op, float t, uint64_t hwad);
+static void act_op(int op, float t, bool force);
 	
 /*
 read temperature for maximum NTEMP devices
 not needed but i keep it here in case of future extensions
 device 0 is the room temperature sensor	
 */	
-static void IRAM_ATTR temp_timer_callback(void* arg)
+static void temp_timer_callback(void* arg)
 	{
 	msg_t msg;
 	time_t t = time(NULL);
 	if(t % temp_trigger_sec == 0)
 		{
 		msg.source = MSG_TEMP_DATA;
-		xQueueSendFromISR(temp_mon_queue, &msg, NULL);
+		xQueueSend(temp_mon_queue, &msg, 0);
 		}
 	}
 /*
@@ -88,7 +85,6 @@ static void IRAM_ATTR act_timer_callback(void* arg)
 void tmon(void *pvParams)
 	{
 	msg_t msg;
-	int nt = 0;
 	float tc = 0., ts = 0., tp[2] = {-100, -100.};
 	char obuf[256], buf[40], mbuf[512];
 	time_t time_stamp;
@@ -120,73 +116,57 @@ void tmon(void *pvParams)
 		if(xQueueReceive(temp_mon_queue, &msg, portMAX_DELAY))
 			{
 			//ESP_LOGI(TAG, "msg.source: %d", (int)msg.source);
-			if(msg.source == MSG_TEMP_DATA)
+			if(msg.source == MSG_TEMP_DATA && num_temp_devices)
 				{
 				time(&time_stamp);
 				localtime_r(&time_stamp, &timeinfo);
 				strftime(mbuf, sizeof(mbuf), "%Y-%m-%dT%H:%M:%S", &timeinfo);
 				strcat(mbuf, "\1");
-				if(num_temp_devices > 0)
+				
+				ESP_ERROR_CHECK(ds18b20_trigger_all_temp_conv());
+				ESP_ERROR_CHECK(ds18b20_get_temperature(0, &ts));
+				hwad = get_addr(0);
+				
+				tc = ts;
+				msg.val = (int)(tc * 100.);
+				msg.source = ACT_TEMP;
+				msg.val = (int)(tc * 100.);
+				xQueueSend(ui_cmd_q, &msg, pdMS_TO_TICKS(20));
+				
+				tp[0] = tp[1];
+				tp[1] = tc;
+				if(tp[0] > -90.) //valid reading
 					{
-					sprintf(obuf, "%5d - ", nt);
-					ESP_ERROR_CHECK(ds18b20_trigger_all_temp_conv());
-					for(int i = 0; i < num_temp_devices; i++)
-						{
-						ESP_ERROR_CHECK(ds18b20_get_temperature(i, &ts));
-						hwad = get_addr(i);
-						//if(tcor[i].hwaddr == hwad)
-							{
-							//tc = (ts - tcor[0].b) / tcor[0].a;
-							tc = ts;
-							if(i == 0)
-								{
-								msg.val = (int)(tc * 100.);
-								tp[0] = tp[1];
-								tp[1] = tc;
-								if(tp[0] > -90.)
-									{
-									if(tp[0] < freeze_temp && tp[1] < freeze_temp)
-										{
-										act_op(1, tc, hwad);
-											continue;
-										}
-									else if(tp[0] < target_temp - hist_temp && tp[1] < target_temp - hist_temp)
-										act_op(1, tc, hwad);
-									else if(tp[0] > target_temp + hist_temp && tp[1] >  target_temp + hist_temp)
-										act_op(0, tc, hwad);
-									}
-								//ESP_LOGI(TAG, "tp0 = %.2f, tp1 = %.2f / %.2f, %.2f", tp[0], tp[1], target_temp, hist_temp);
-								msg.source = ACT_TEMP;
-								msg.val = (int)(tc * 100.);
-								xQueueSend(ui_cmd_q, &msg, pdMS_TO_TICKS(20)); 
-								}
-							sprintf(buf, "%d %6.3f %6.3f ", act_state, tc, ts);
-							strcat(obuf, buf);
-							sprintf(buf, "%llX\1%d\1%.3f\1%.3f\1", tcor[0].hwaddr, act_state, tc, ts);
-							strcat(mbuf, buf);
-							//ESP_LOGI(TAG, "%s", obuf);
-							publish_topic(TOPIC_MONITOR, mbuf, 0, 0);
-							
-							
-							}
-						}
-					nt++;
+					if(tp[0] < freeze_temp && tp[1] < freeze_temp)
+						act_op(1, tc, true);
+					else if(tp[0] < target_temp - hist_temp && tp[1] < target_temp - hist_temp)
+						act_op(1, tc, false);
+					else if(tp[0] > target_temp + hist_temp && tp[1] >  target_temp + hist_temp)
+						act_op(0, tc, false);
 					}
+				//ESP_LOGI(TAG, "tp0 = %.2f, tp1 = %.2f / %.2f, %.2f", tp[0], tp[1], target_temp, hist_temp);
+ 
+				sprintf(obuf, "0 - %d %6.3f %6.3f ", act_state, tc, ts);
+				sprintf(buf, "%llX\1%d\1%.3f\1%.3f\1", hwad, act_state, tc, ts);
+				strcat(mbuf, buf);
+				//ESP_LOGI(TAG, "%s", obuf);
+				publish_topic(TOPIC_MONITOR, mbuf, 0, 0);
+
 				// check for maintenance time
 				if(open_maint_ts == 0)
 					{
 					if(time_stamp - last_act_op > maint_time * 86400) // check for maintenance time
 						{
-						act_op(1, tc, hwad); //open actuator
+						act_op(1, tc, false); //open actuator
 						open_maint_ts = time_stamp;
 						}
 					}
 				else
 					{
-					if(time_stamp - open_maint_ts > on_off_time * 3)
+					if(time_stamp - open_maint_ts > on_off_time * 3 && tp[0] > freeze_temp && tp[1]  > freeze_temp)
 						{
 						open_maint_ts = 0;
-						act_op(0, tc, hwad); //open actuator
+						act_op(0, tc, false); //open actuator
 						}
 					}
 				}
@@ -194,7 +174,6 @@ void tmon(void *pvParams)
 				{
 				if(!monitor_running)
 					{
-					nt = 0;
 					temp_trigger_sec = msg.val;
 					ESP_LOGI(TAG, "Starting monitor timer");
 					ESP_ERROR_CHECK(esp_timer_start_periodic(temp_timer, 1000000));
@@ -223,21 +202,25 @@ void get_temp(int idx, float *temperature)
 	ESP_ERROR_CHECK(ds18b20_get_temperature(idx, temperature));
 	ESP_LOGI(TAG, "temperature read from DS18B20[%d]: %.2fC", idx, *temperature);
 	}
+	
 uint64_t get_t_hwadd(int idx)
 	{
 	if(idx < num_temp_devices)
-		return tcor[idx].hwaddr;
+		return get_addr(idx);
 	else
  		return 0;
 	}
+
 int do_temp(int argc, char **argv)
 	{
 	msg_t msg;
+	if(argc && argv && argv[0] && strcmp(argv[0], command))
+		return 0;
 	int nerrors = arg_parse(argc, argv, (void **)&t_args);
 	if (nerrors != 0)
 		{
 		//arg_print_errors(stderr, t_args.end, argv[0]);
-		return ESP_FAIL;
+		return 1;
 		}
 	if(strcmp(t_args.op->sval[0], "r") == 0)
 		{
@@ -287,7 +270,7 @@ int do_temp(int argc, char **argv)
 		}
 	else if(strcmp(t_args.op->sval[0], "start") == 0)
 		{
-		if(t_args.arg->count)
+		if(t_args.arg->count && t_args.arg->ival[0] > 0)
 			{
 			msg.source = MSG_START_MON;
 			msg.val = t_args.arg->ival[0];
@@ -306,7 +289,7 @@ int do_temp(int argc, char **argv)
 		localtime_r(&last_act_op, &timeinfo);
 		strftime(tbuf, sizeof(tbuf), "%Y-%m-%dT%H:%M:%S", &timeinfo);
 		sprintf(mbuf, "%d\1%llx\1%d\1%s\1%.2f\1%.2f\1%d\1%d\1%.2f\1", 
-			num_temp_devices, tcor[0].hwaddr, act_state, tbuf, target_temp, hist_temp, on_off_time, maint_time, freeze_temp);
+			num_temp_devices, get_addr(0), act_state, tbuf, target_temp, hist_temp, on_off_time, maint_time, freeze_temp);
 		publish_topic(TOPIC_STATE, mbuf, 0, 0);
 		ESP_LOGI(TAG, "num_temp_devices = %d / act_state = %d - %s", num_temp_devices, act_state, tbuf);
 		}
@@ -315,7 +298,7 @@ int do_temp(int argc, char **argv)
 		if(t_args.arg->count)
 			{
 			act_state = t_args.arg->ival[0];
-			gpio_set_level(ACT_CMD_PIN, t_args.arg->ival[0]);
+			act_op(t_args.arg->ival[0], 0.0, true);
 			}
 		ESP_LOGI(TAG, "Actuator state = %d", act_state);
 		}
@@ -330,14 +313,14 @@ int do_temp(int argc, char **argv)
 				char keyname[18] = {0};
 				if(!strcmp(t_args.arg1->sval[0], TARGET_TEMP))
 					strcpy(keyname, TARGET_TEMP);
-				else if(!strcmp(t_args.arg1->sval[0], HYSTRESIS))
-					strcpy(keyname, HYSTRESIS);
+				else if(!strcmp(t_args.arg1->sval[0], HYSTERESIS))
+					strcpy(keyname, HYSTERESIS);
 				else if(!strcmp(t_args.arg1->sval[0], FREEZE_TEMP))
 					strcpy(keyname, FREEZE_TEMP);
 				else if(!strcmp(t_args.arg1->sval[0], ONOFF_CYCLE))
 					strcpy(keyname, ONOFF_CYCLE);
-				else if(!strcmp(t_args.arg1->sval[0], MAINT_CYCE))
-					strcpy(keyname, MAINT_CYCE);
+				else if(!strcmp(t_args.arg1->sval[0], MAINT_CYCLE))
+					strcpy(keyname, MAINT_CYCLE);
 				if(strlen(keyname))
 					{
 					nvs_handle_t handle;
@@ -349,13 +332,13 @@ int do_temp(int argc, char **argv)
 							{
 							if(!strcmp(t_args.arg1->sval[0], TARGET_TEMP))
 								target_temp = val / 100.;
-							else if(!strcmp(t_args.arg1->sval[0], HYSTRESIS))
+							else if(!strcmp(t_args.arg1->sval[0], HYSTERESIS))
 								hist_temp = val / 100.;
 							else if(!strcmp(t_args.arg1->sval[0], FREEZE_TEMP))
 								freeze_temp = val / 100.;
 							else if(!strcmp(t_args.arg1->sval[0], ONOFF_CYCLE))
 								on_off_time = val;
-							else if(!strcmp(t_args.arg1->sval[0], MAINT_CYCE))
+							else if(!strcmp(t_args.arg1->sval[0], MAINT_CYCLE))
 								maint_time = val;
 							}
 						else
@@ -372,18 +355,17 @@ int do_temp(int argc, char **argv)
 		else
 			{
 			ESP_LOGI(TAG, "configuration - target temp (%s) : %.2f", TARGET_TEMP, target_temp);
-			ESP_LOGI(TAG, "configuration - hysteresis (%s)  : %.2f", HYSTRESIS, hist_temp);
+			ESP_LOGI(TAG, "configuration - hysteresis (%s)  : %.2f", HYSTERESIS, hist_temp);
 			ESP_LOGI(TAG, "configuration - freeze temp (%s) : %.2f", FREEZE_TEMP, freeze_temp);
 			ESP_LOGI(TAG, "configuration - on/off cycle (%s): %d", ONOFF_CYCLE, on_off_time);
-			ESP_LOGI(TAG, "configuration - on/off cycle (%s): %d", MAINT_CYCE, maint_time);
+			ESP_LOGI(TAG, "configuration - on/off cycle (%s): %d", MAINT_CYCLE, maint_time);
 			}
 		}
-	return ESP_OK;
+	return 0;
 	}
 int register_temps()
 	{
 	int ret = 0;
-	uint64_t hwad;
 	char mbuf[80];
 	gpio_config_t io_conf;
 	io_conf.mode = GPIO_MODE_OUTPUT;
@@ -396,30 +378,10 @@ int register_temps()
 	//get_configuration();
 	current_state = OPERATIONAL_STATE;
 	act_state = -1;
-	for (int i = 0; i < num_temp_devices; i++)
-		{
-		hwad = get_addr(i);
-		tcor[i].hwaddr = 0;
-		for(int j = 0; j < NTEMP; j++)
-			{
-			if(d_hwaddr[j] == hwad)
-				{
-				tcor[i].hwaddr = hwad;
-				tcor[i].a = ac[j];
-				tcor[i].b = bc[j];
-				break;
-				}
-			}
-		if(tcor[i].hwaddr == 0)
-			{
-			tcor[i].hwaddr = hwad;
-			tcor[i].a = 1.;
-			tcor[i].b = 0.;
-			}
-		}
+
 	if(num_temp_devices > 1)
 		{
-		sprintf(mbuf, "More temp probes found.\nTemp measuremens will be taken from probe[0]: %llu", tcor[0].hwaddr);
+		sprintf(mbuf, "More temp probes found.\nTemp measuremens will be taken from probe[0]: %llu", get_addr(0));
 		publish_topic(TOPIC_ERROR, mbuf, 0, 0);
 		}
 	else if(num_temp_devices == 0)
@@ -458,21 +420,18 @@ int register_temps()
 	return ret;
 	}
 
-void act_op(int op, float t, uint64_t hwad)
+void act_op(int op, float t, bool force)
 	{
-	msg_t msg;
+	msg_t msg = {0};
 	time_t ts = time(NULL);
-	if(ts - last_act_op >= on_off_time)
+	if(force || ts - last_act_op >= on_off_time)
 		{
 		if(op != act_state)
 			{
+			// last_act_op: timestamp of last actuator state change (ON or OFF)
 			last_act_op = ts;
 			gpio_set_level(ACT_CMD_PIN, op);
 			ESP_LOGI(TAG, "act op %d  %d %.2f", act_state, op, t);
-			//localtime_r(&ts, &timeinfo);
-			//strftime(tbuf, sizeof(mbuf), "%Y-%m-%dT%H:%M:%S", &timeinfo);
-			//sprintf(mbuf, "%s\1%s\1%llx\1%d\1%d\1%.2f\1", tbuf, ACT_OP_STATE, hwad, act_state, op, t);
-			//publish_topic(TOPIC_STATE, mbuf, 1, 0);
 			act_state = op;
 			msg.source = HEATING_ONOFF;
 			msg.val = op;
@@ -499,11 +458,11 @@ static void get_thermostat_conf()
 			target_temp = val / 100.;
 		else
 			ESP_LOGI(TAG, "Error getting %s value. Taking default: %.2f (%s / %d)", TARGET_TEMP, target_temp, esp_err_to_name(err), err);
-		err = nvs_get_i32(handle, HYSTRESIS, &val);
+		err = nvs_get_i32(handle, HYSTERESIS, &val);
 		if(err == ESP_OK)
 			hist_temp = val / 100.;
 		else
-			ESP_LOGI(TAG, "Error getting %s value. Taking default: %.2f (%s / %d)", HYSTRESIS, hist_temp, esp_err_to_name(err), err);
+			ESP_LOGI(TAG, "Error getting %s value. Taking default: %.2f (%s / %d)", HYSTERESIS, hist_temp, esp_err_to_name(err), err);
 		err = nvs_get_i32(handle, ONOFF_CYCLE, &val);
 		if(err == ESP_OK)
 			on_off_time = val;
@@ -514,11 +473,11 @@ static void get_thermostat_conf()
 			freeze_temp = val / 100.;
 		else
 			ESP_LOGI(TAG, "Error getting %s value. Taking default: %.2f (%s / %d)", FREEZE_TEMP, freeze_temp, esp_err_to_name(err), err);
-		err = nvs_get_i32(handle, MAINT_CYCE, &val);
+		err = nvs_get_i32(handle, MAINT_CYCLE, &val);
 		if(err == ESP_OK)
 			maint_time = val;
 		else
-			ESP_LOGI(TAG, "Error getting %s value. Taking default: %d (%s / %d)", MAINT_CYCE, maint_time, esp_err_to_name(err), err);
+			ESP_LOGI(TAG, "Error getting %s value. Taking default: %d (%s / %d)", MAINT_CYCLE, maint_time, esp_err_to_name(err), err);
 		nvs_close(handle);
 		}
 	else
@@ -537,9 +496,9 @@ void set_configuration(int targett, int histt, int freezet, int onoffc, int main
 		else
 			target_temp = targett / 100.;
 		
-		err = nvs_set_i32(handle, HYSTRESIS, histt);
+		err = nvs_set_i32(handle, HYSTERESIS, histt);
 		if(err != ESP_OK)
-			ESP_LOGI(TAG, "Error setting %s value: %s / %d", HYSTRESIS, esp_err_to_name(err), err);
+			ESP_LOGI(TAG, "Error setting %s value: %s / %d", HYSTERESIS, esp_err_to_name(err), err);
 		else
 			hist_temp = histt / 100.;
 		
@@ -555,9 +514,9 @@ void set_configuration(int targett, int histt, int freezet, int onoffc, int main
 		else
 			on_off_time = onoffc;
 		
-		err = nvs_set_i32(handle, MAINT_CYCE, maintt);
+		err = nvs_set_i32(handle, MAINT_CYCLE, maintt);
 		if(err != ESP_OK)
-			ESP_LOGI(TAG, "Error setting %s value: %s / %d", MAINT_CYCE, esp_err_to_name(err), err);
+			ESP_LOGI(TAG, "Error setting %s value: %s / %d", MAINT_CYCLE, esp_err_to_name(err), err);
 		else
 			maint_time = maintt;
 					
