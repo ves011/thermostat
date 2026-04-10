@@ -11,5 +11,11 @@
 void do_option_screen();
 
 
+enum {
+    OPT_STATE = 0,
+    OPT_RESTART,
+    OPT_CANCEL
+};
+
 
 #endif /* LCD_OPTION_SCREEN_H_ */

@@ -116,7 +116,7 @@ void do_option_screen()
 			switch(msg.source)
 				{
 				case K_PRESS:
-					if(opt_sel == NITEMS - 1)
+					if(opt_sel == OPT_CANCEL)
 						{
 						if(ui_optionscreen) 
 							{
@@ -126,23 +126,23 @@ void do_option_screen()
 							}
 						return;
 						}
-					else if(opt_sel == 0)
+					else if(opt_sel == OPT_STATE)
 						{
 						do_state_screen();
-						//draw_option_screen();
 						 _lock_acquire(&lvgl_api_lock);
 						lv_scr_load_anim(ui_optionscreen, LV_SCR_LOAD_ANIM_MOVE_LEFT, 100, 0, false);
 						_lock_release(&lvgl_api_lock);
 						}
-					else if(opt_sel == 1)
+					else if(opt_sel == OPT_RESTART)
 						esp_restart();
 					break;
 				case K_ROT:
-					_lock_acquire(&lvgl_api_lock);
 					if(anim)
 						{
+						_lock_acquire(&lvgl_api_lock);
 						lv_anim_pause(anim);
 						lv_obj_set_style_opa(ui_label[opt_sel], 255, 0);
+						_lock_release(&lvgl_api_lock);
 						}
 					if(msg.val == K_ROT_LEFT)
 						opt_sel--;
@@ -150,6 +150,7 @@ void do_option_screen()
  						opt_sel++;
 					if(opt_sel < 0) opt_sel = NITEMS - 1;
 					if(opt_sel >= NITEMS) opt_sel = 0;
+					_lock_acquire(&lvgl_api_lock);
 					anim = lv_anim_start(&opt_anim[opt_sel]);
 					_lock_release(&lvgl_api_lock);
 					break;

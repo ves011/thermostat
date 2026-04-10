@@ -8,12 +8,10 @@
 #include <stdio.h>
 #include "driver/gpio.h"
 #include "esp_log.h"
-#include "esp_netif.h"
 #include <string.h>
 #include <sys/time.h>
 #include "project_specific.h"
 #include "common_defines.h"
-#include "external_defs.h"
 #include "lvgl.h"
 #include "lcd.h"
 #include "state_screen.h"
@@ -64,32 +62,29 @@ void do_boot_screen()
 				bmsg[0] = 0;
 				switch(msg.val)
 					{
-					case 0:
+					case BOOT_LCD_READY:
 						strcpy(bmsg, "LCD init completed ");
 						break;
-					case 1:
+					case BOOT_NVS_READY:
 						strcpy(bmsg, "spiffs, nvs - initit completed ");
 						break;
-					case 2:
+					case BOOT_NET_READY:
 						strcpy(bmsg, "connected to network ");
 						break;
-					case 3:
+					case BOOT_MQTT_READY:
 						strcpy(bmsg, "MQTT client started ");
 						break;
-					case 4:
+					case BOOT_CMDS_READY:
 						strcpy(bmsg, "system commands registered ");
 						break;
-					case 5:
+					case BOOT_TEMP_READY:
 						strcpy(bmsg, "temperature monitor registered ");
 						break;
-					case 6:
-						strcpy(bmsg, "boot completed ");
-						break;
-					case 101:			//no temp sensor found
+					case BOOT_ERR_NO_TEMP:			//no temp sensor found
 						do_state_screen();
 						break;
 					}
-				if(msg.val == 8)
+				if(msg.val == BOOT_DONE)
 					break;
 				else
 					{
@@ -98,8 +93,6 @@ void do_boot_screen()
 					_lock_release(&lvgl_api_lock);
 					}
 				}
-			//else
-			//	break;
 			}
 		}
 	}

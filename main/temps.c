@@ -37,7 +37,7 @@ QueueHandle_t temp_mon_queue;
 
 static int temp_trigger_sec;
 
-float	target_temp, hist_temp, freeze_temp;
+float	target_temp, hyst_temp, freeze_temp;
 int		on_off_time, maint_time;
 
 static int current_state;
@@ -139,12 +139,12 @@ void tmon(void *pvParams)
 					{
 					if(tp[0] < freeze_temp && tp[1] < freeze_temp)
 						act_op(1, tc, true);
-					else if(tp[0] < target_temp - hist_temp && tp[1] < target_temp - hist_temp)
+					else if(tp[0] < target_temp - hyst_temp && tp[1] < target_temp - hyst_temp)
 						act_op(1, tc, false);
-					else if(tp[0] > target_temp + hist_temp && tp[1] >  target_temp + hist_temp)
+					else if(tp[0] > target_temp + hyst_temp && tp[1] >  target_temp + hyst_temp)
 						act_op(0, tc, false);
 					}
-				//ESP_LOGI(TAG, "tp0 = %.2f, tp1 = %.2f / %.2f, %.2f", tp[0], tp[1], target_temp, hist_temp);
+				//ESP_LOGI(TAG, "tp0 = %.2f, tp1 = %.2f / %.2f, %.2f", tp[0], tp[1], target_temp, hyst_temp);
  
 				sprintf(obuf, "0 - %d %6.3f %6.3f ", act_state, tc, ts);
 				sprintf(buf, "%llX\1%d\1%.3f\1%.3f\1", hwad, act_state, tc, ts);
@@ -289,7 +289,7 @@ int do_temp(int argc, char **argv)
 		localtime_r(&last_act_op, &timeinfo);
 		strftime(tbuf, sizeof(tbuf), "%Y-%m-%dT%H:%M:%S", &timeinfo);
 		sprintf(mbuf, "%d\1%llx\1%d\1%s\1%.2f\1%.2f\1%d\1%d\1%.2f\1", 
-			num_temp_devices, get_addr(0), act_state, tbuf, target_temp, hist_temp, on_off_time, maint_time, freeze_temp);
+			num_temp_devices, get_addr(0), act_state, tbuf, target_temp, hyst_temp, on_off_time, maint_time, freeze_temp);
 		publish_topic(TOPIC_STATE, mbuf, 0, 0);
 		ESP_LOGI(TAG, "num_temp_devices = %d / act_state = %d - %s", num_temp_devices, act_state, tbuf);
 		}
@@ -333,7 +333,7 @@ int do_temp(int argc, char **argv)
 							if(!strcmp(t_args.arg1->sval[0], TARGET_TEMP))
 								target_temp = val / 100.;
 							else if(!strcmp(t_args.arg1->sval[0], HYSTERESIS))
-								hist_temp = val / 100.;
+								hyst_temp = val / 100.;
 							else if(!strcmp(t_args.arg1->sval[0], FREEZE_TEMP))
 								freeze_temp = val / 100.;
 							else if(!strcmp(t_args.arg1->sval[0], ONOFF_CYCLE))
@@ -355,7 +355,7 @@ int do_temp(int argc, char **argv)
 		else
 			{
 			ESP_LOGI(TAG, "configuration - target temp (%s) : %.2f", TARGET_TEMP, target_temp);
-			ESP_LOGI(TAG, "configuration - hysteresis (%s)  : %.2f", HYSTERESIS, hist_temp);
+			ESP_LOGI(TAG, "configuration - hysteresis (%s)  : %.2f", HYSTERESIS, hyst_temp);
 			ESP_LOGI(TAG, "configuration - freeze temp (%s) : %.2f", FREEZE_TEMP, freeze_temp);
 			ESP_LOGI(TAG, "configuration - on/off cycle (%s): %d", ONOFF_CYCLE, on_off_time);
 			ESP_LOGI(TAG, "configuration - on/off cycle (%s): %d", MAINT_CYCLE, maint_time);
@@ -446,7 +446,7 @@ static void get_thermostat_conf()
 	int32_t val;
 
 	target_temp = DEFAULT_TARGET_TEMP;
-	hist_temp = DEFAULT_HISTEREZIS;
+	hyst_temp = DEFAULT_HYSTERESIS;
 	freeze_temp = DEFAULT_FREEZET;
 	on_off_time = DEFAULT_ONOFF_CYCLE;
 	maint_time = DEFAULT_MAINTD;
@@ -460,9 +460,9 @@ static void get_thermostat_conf()
 			ESP_LOGI(TAG, "Error getting %s value. Taking default: %.2f (%s / %d)", TARGET_TEMP, target_temp, esp_err_to_name(err), err);
 		err = nvs_get_i32(handle, HYSTERESIS, &val);
 		if(err == ESP_OK)
-			hist_temp = val / 100.;
+			hyst_temp = val / 100.;
 		else
-			ESP_LOGI(TAG, "Error getting %s value. Taking default: %.2f (%s / %d)", HYSTERESIS, hist_temp, esp_err_to_name(err), err);
+			ESP_LOGI(TAG, "Error getting %s value. Taking default: %.2f (%s / %d)", HYSTERESIS, hyst_temp, esp_err_to_name(err), err);
 		err = nvs_get_i32(handle, ONOFF_CYCLE, &val);
 		if(err == ESP_OK)
 			on_off_time = val;
@@ -484,7 +484,7 @@ static void get_thermostat_conf()
 		ESP_LOGI(TAG, "Error getting thermostat configuration: %s / %d", esp_err_to_name(err), err);
 	}
 	
-void set_configuration(int targett, int histt, int freezet, int onoffc, int maintt)
+void set_configuration(int targett, int hystt, int freezet, int onoffc, int maintt)
 	{
 	nvs_handle handle;
 	int err;
@@ -496,11 +496,11 @@ void set_configuration(int targett, int histt, int freezet, int onoffc, int main
 		else
 			target_temp = targett / 100.;
 		
-		err = nvs_set_i32(handle, HYSTERESIS, histt);
+		err = nvs_set_i32(handle, HYSTERESIS, hystt);
 		if(err != ESP_OK)
 			ESP_LOGI(TAG, "Error setting %s value: %s / %d", HYSTERESIS, esp_err_to_name(err), err);
 		else
-			hist_temp = histt / 100.;
+			hyst_temp = hystt / 100.;
 		
 		err = nvs_set_i32(handle, FREEZE_TEMP, freezet);
 		if(err != ESP_OK)

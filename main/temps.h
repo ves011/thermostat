@@ -18,8 +18,8 @@
 #define TARGET_TEMP			"target-temp"		
 #define ONOFF_CYCLE			"on/off-cycle"
 #define FREEZE_TEMP			"freeze-temp"
-#define HYSTERESIS     "hysteresis"
-#define MAINT_CYCLE   "maint-cycle"
+#define HYSTERESIS     		"hysteresis"
+#define MAINT_CYCLE   		"maint-cycle"
  
 
 /*
@@ -36,7 +36,7 @@
 #define DS_SAMPLE_PERIOD     (1000)   // milliseconds
 
 
-extern float	target_temp, hist_temp, freeze_temp;
+extern float	target_temp, hyst_temp, freeze_temp;
 extern int		on_off_time, maint_time;
 extern QueueHandle_t temp_mon_queue;;
 
