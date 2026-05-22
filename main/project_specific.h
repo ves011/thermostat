@@ -30,7 +30,7 @@
 #define CONFIG_STORE_HISTORY                    1
 
 /** Maximum allowed console command line length */
-#define CONFIG_CONSOLE_MAX_COMMAND_LINE_LENGTH    1024
+#define CONFIG_CONSOLE_MAX_COMMAND_LINE_LENGTH    256
 
 /**
  * Select active controller type.
@@ -47,9 +47,9 @@
     #define TEST1
     /** Device ID used during test builds */
     #define CTRL_DEV_ID                    (98)
-#else
+//#else
     /** Device ID used in production builds */
-    #define CTRL_DEV_ID                    (1)
+    //#define CTRL_DEV_ID                    (1)
 #endif
 
 /* -------------------------------------------------------------
@@ -58,6 +58,7 @@
 
 /** Communication protocol used by the device (e.g. MQTT) */
 #define COMM_PROTO            MQTT_PROTO
+#define CONFIG_BROKER_URL "mqtts://proxy.gnet:1886"
 
 /* Uncomment to enable OTA support */
 //#define OTA_SUPPORT
@@ -218,6 +219,8 @@
 
 /** Freeze protection active state */
 #define FREEZING_PROTECTION_STATE        2
+
+extern int controller_op_registered;
 
 #endif /* MAIN_PROJECT_SPECIFIC_H_ */
 

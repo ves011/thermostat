@@ -40,9 +40,7 @@
 #include "utils.h"
 #include "esp_lcd_panel_st7789.h"
 #include "project_specific.h"
-#include "common_defines.h"
 #include "styles.h"
-#include "external_defs.h"
 #include "boot_screen.h"
 #include "main_screen.h"
 #ifdef ROT_ENCODER

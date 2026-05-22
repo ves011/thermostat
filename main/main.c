@@ -25,11 +25,12 @@
 #include <driver/gpio.h>
 #include "esp_log.h"
 #include "esp_console.h"
+#include "esp_wifi.h"
 #include "freertos/idf_additions.h"
 #include "freertos/projdefs.h"
 #include "ntp_sync.h"
 #include "common_defines.h"
-#include "external_defs.h"
+#include "project_specific.h"
 #include "cmd_wifi.h"
 #include "cmd_system.h"
 #include "tcp_log.h"
@@ -58,6 +59,21 @@ int controller_op_registered;
 
 /** Logging tag for main application */
 static char *TAG = "thermo";
+
+void mqtt_exec_fun(int argc, char **argv)
+	{
+	if(argc)
+		{
+		if(strcmp(command, argv[0]) == 0)
+			do_temp(argc, argv);
+		if(strcmp("wifi", argv[0]) == 0)
+			do_wifi(argc, argv);
+		else
+			{
+			do_system_cmd(argc, argv);
+			}
+		}
+	}
 
 /**
  * @brief Initialize the Non-Volatile Storage (NVS) subsystem
@@ -154,17 +170,17 @@ void app_main(void)
     xQueueSend(ui_cmd_q, &msg, 0);
     
 /* Wi-Fi initialization and connection */
-    initialise_wifi();
-	if(!wifi_join(NULL, NULL, JOIN_TIMEOUT_MS))
+    initialise_wifi(true);
+	if(!wifi_join(NULL, NULL, JOIN_TIMEOUT_MS, true))
 		ESP_LOGI(TAG, "Failed to connect to %s", dev_conf.sta_ssid);
 	else
 		ESP_LOGI(TAG, "Connected to %s", dev_conf.sta_ssid);
-	
+	esp_wifi_set_ps(WIFI_PS_NONE);
 	msg.val = BOOT_NET_READY;
     xQueueSend(ui_cmd_q, &msg, 0);
     
    /* MQTT and logging services */
-	mqtt_start();
+	mqtt_start(mqtt_exec_fun);
 	tcp_log_init(dev_conf.cs);
 	esp_log_set_vprintf(my_log_vprintf);
 

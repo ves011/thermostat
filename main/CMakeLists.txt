@@ -4,9 +4,7 @@
 idf_component_register(
 					   SRCS "main.c"
 							"temps.c"
-#							"config.c"
 							"../lcd/lcd.c"
-
 							"../lcd/styles.c"
 							"../lcd/boot_screen.c"
 							"../lcd/main_screen.c"
@@ -19,8 +17,6 @@ idf_component_register(
 							"../lcd/images/ui_img_wifi_png.c"			#wifi
 							"../lcd/images/ui_img_frame_00_png.c"		#heating
 							"../lcd/images/ui_img_wifi_error_png.c"		#wifi-error
-							#"../lcd/spi_lcd_touch_example_main.c"
-							#"../lcd/lvgl_demo_ui.c"
 							"../../esp32_common/tcp/ntp_sync.c"
 							"../../esp32_common/utils/utils.c"
 							"../../esp32_common/cmds/cmd_wifi.c"
@@ -36,7 +32,6 @@ idf_component_register(
 							"../../esp32_common/utils/rot_enc.c"
                     INCLUDE_DIRS 
                     		"."
-                    		"../certs"
                     		"../lcd"
 							"../../esp32_common"
                     		"../../esp32_common/tcp"
@@ -45,6 +40,5 @@ idf_component_register(
 							"../../esp32_common/tcp"
 							"../../esp32_common/owb"
 						)
-#idf_build_set_property(COMPILE_OPTIONS "-DLV_CONF_INCLUDE_SIMPLE=1" APPEND)
+
 idf_build_set_property(COMPILE_OPTIONS "-DLV_CONF_PATH=\"../lcd/lv_conf.h\"" APPEND)
-#idf_build_set_property(COMPILE_OPTIONS "-I../lcd" APPEND)

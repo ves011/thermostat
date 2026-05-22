@@ -10,6 +10,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include "cmd_system.h"
+#include "cmd_wifi.h"
 #include "esp_err.h"
 #include "nvs.h"
 #include "driver/gpio.h"
@@ -20,19 +22,17 @@
 #include "esp_timer.h"
 #include "freertos/projdefs.h"
 #include "common_defines.h"
-//#include "external_defs.h"
 #include "hal/gpio_types.h"
 #include "mqtt_ctrl.h"
 #include "project_specific.h" 
 #include "ds18b20.h"
 #include "lcd.h"
 #include "utils.h"
-//#include "state_screen.h"
 #include "temps.h"
 
 static int num_temp_devices;
 static const char* TAG = "temps op:";
-static char *command = "t";
+char *command = "temp";
 QueueHandle_t temp_mon_queue;
 
 static int temp_trigger_sec;
@@ -43,6 +43,7 @@ int		on_off_time, maint_time;
 static int current_state;
 static int act_state;
 time_t last_act_op, open_maint_ts;
+static float last_temp_read = -90.;
 
 static void get_thermostat_conf();
 
@@ -132,7 +133,8 @@ void tmon(void *pvParams)
 				msg.source = ACT_TEMP;
 				msg.val = (int)(tc * 100.);
 				xQueueSend(ui_cmd_q, &msg, pdMS_TO_TICKS(20));
-				
+				if(tc > -90.)
+					last_temp_read = tc;
 				tp[0] = tp[1];
 				tp[1] = tc;
 				if(tp[0] > -90.) //valid reading
@@ -241,33 +243,6 @@ int do_temp(int argc, char **argv)
 			ESP_LOGI(TAG, "temperature read from DS18B20[%d]: %.2fC", t_args.arg->ival[0], temperature);
 			}
 		}
-	else if(strcmp(t_args.op->sval[0], "rc") == 0)
-		{
-		if(t_args.arg->count > 0)
-			{
-			int j = 0;
-			float t;
-			char obuf[256], buf[20];
-			
-			while(j < t_args.arg->ival[0])
-				{
-				sprintf(obuf, "%5d - ", j);
-				for(int i = 0; i < num_temp_devices; i++)
-					{
-					ESP_ERROR_CHECK(ds18b20_trigger_temperature_conversion(i));
-					ESP_ERROR_CHECK(ds18b20_get_temperature(i, &t));
-					sprintf(buf, "%6.2f ", t);
-					strcat(obuf, buf);
-					}
-				ESP_LOGI(TAG, "%s", obuf);
-				j++;
-				} 
-			}
-		}
-	else if(strcmp(t_args.op->sval[0], "s") == 0)
-		{
-		num_temp_devices = ds18b20_init(DS18B20_RESOLUTION_12B);
-		}
 	else if(strcmp(t_args.op->sval[0], "start") == 0)
 		{
 		if(t_args.arg->count && t_args.arg->ival[0] > 0)
@@ -284,14 +259,15 @@ int do_temp(int argc, char **argv)
 		}
 	else if(strcmp(t_args.op->sval[0], "state") == 0)
 		{
-		struct tm timeinfo;
-		char mbuf[256], tbuf[40];
-		localtime_r(&last_act_op, &timeinfo);
-		strftime(tbuf, sizeof(tbuf), "%Y-%m-%dT%H:%M:%S", &timeinfo);
-		sprintf(mbuf, "%d\1%llx\1%d\1%s\1%.2f\1%.2f\1%d\1%d\1%.2f\1", 
-			num_temp_devices, get_addr(0), act_state, tbuf, target_temp, hyst_temp, on_off_time, maint_time, freeze_temp);
+		/*
+		* temp sensor HWADDR
+		* temperature
+		* actuator state
+		*/
+		char mbuf[256];
+		sprintf(mbuf, "%llx\1%.2f\1%d", get_addr(0), last_temp_read, act_state);
 		publish_topic(TOPIC_STATE, mbuf, 0, 0);
-		ESP_LOGI(TAG, "num_temp_devices = %d / act_state = %d - %s", num_temp_devices, act_state, tbuf);
+		ESP_LOGI(TAG, "num_temp_devices = %d / act_state = %d / last temp read %.2f", num_temp_devices, act_state, last_temp_read);
 		}
 	else if(strcmp(t_args.op->sval[0], "act") == 0)
 		{
@@ -398,13 +374,13 @@ int register_temps()
 
     last_act_op = time(NULL);
     open_maint_ts = 0; 
-	t_args.op = arg_str1(NULL, NULL, "<op>", "op: r | s");
-	t_args.arg= arg_int0(NULL, NULL, "<arg>", "set sensor #");
-	t_args.arg1 = arg_str0(NULL, NULL, "target", "target value");
+	t_args.op = arg_str1(NULL, NULL, "<op>", "op: r | start | stop | act | state| conf");
+	t_args.arg= arg_int0(NULL, NULL, "<arg>", "value");
+	t_args.arg1 = arg_str0(NULL, NULL, "target", "target");
 	t_args.end = arg_end(1);
 	const esp_console_cmd_t t_cmd =
 		{	
-		.command = "t",
+		.command = "temp",
 		.help = "read (r)|start|stop|conf value target",
 		.hint = NULL,
 		.func = &do_temp,
@@ -526,3 +502,4 @@ void set_configuration(int targett, int hystt, int freezet, int onoffc, int main
 	else
 		ESP_LOGI(TAG, "Error setting thermostat configuration: %s / %d", esp_err_to_name(err), err);
 	}
+	

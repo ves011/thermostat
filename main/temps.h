@@ -39,6 +39,7 @@
 extern float	target_temp, hyst_temp, freeze_temp;
 extern int		on_off_time, maint_time;
 extern QueueHandle_t temp_mon_queue;;
+extern char *command;
 
 int register_temps();
 int do_temp(int argc, char **argv);
