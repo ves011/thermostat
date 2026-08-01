@@ -32,6 +32,7 @@
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
 #include "driver/gpio.h"
+#include "driver/ledc.h"
 #include "esp_err.h"
 #include "esp_log.h"
 #include "sys/lock.h"
@@ -50,6 +51,9 @@
 
 /** Logging tag for LCD/UI subsystem */
 static char *TAG = "lcd op";
+
+static void init_bl_pwm();
+
 
 /**
  * @brief LVGL API lock
@@ -72,12 +76,12 @@ uint32_t set_inactivity;
 /**
  * @brief LCD inactivity elapsed time counter (seconds)
  */
-uint32_t inactivity_lcd_sec;
+//uint32_t inactivity_lcd_sec;
 
 /**
  * @brief LCD inactivity state flag
  */
-uint32_t lcd_inactivity;
+//uint32_t lcd_inactivity;
 
 /**
  * @brief LCD initialization completion flag
@@ -242,14 +246,7 @@ static bool lcd_flush_ready(esp_lcd_panel_io_handle_t panel_io,
 static void lcd_init()
 	{
 /* Reset inactivity counters */
-	inactivity_set_sec = set_inactivity = inactivity_lcd_sec = lcd_inactivity;
-/* Backlight GPIO */
-	gpio_config_t bk_gpio_config = 
-		{
-        .mode = GPIO_MODE_OUTPUT,
-        .pin_bit_mask = 1ULL << LCD_BK_LIGHT
-    	};
-    ESP_ERROR_CHECK(gpio_config(&bk_gpio_config));
+	inactivity_set_sec = set_inactivity = 0;//inactivity_lcd_sec = lcd_inactivity;
     
     ESP_LOGI(TAG, "Initialize SPI bus");
 /* SPI bus configuration */
@@ -300,8 +297,11 @@ static void lcd_init()
 	ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(panel_handle, true));
 	
     ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel_handle, true, false));
-
-    gpio_set_level(LCD_BK_LIGHT, 1);
+	init_bl_pwm();
+	set_bl_pwm(BL_PWM_HIGH);
+	//ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 100));
+	//ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0));
+    //gpio_set_level(LCD_BK_LIGHT, 1);
     
 /* LVGL setup */
     ESP_LOGI(TAG, "Initialize LVGL library");
@@ -423,6 +423,34 @@ static void ui_task(void *pvParameters)
 		vTaskDelay(10);
 		do_main_screen(0);
 		}
+	}
+	
+static void init_bl_pwm()
+	{
+	ledc_timer_config_t ledc_timer = {
+        .speed_mode       = LEDC_LOW_SPEED_MODE,
+        .duty_resolution  = LEDC_TIMER_10_BIT,
+        .timer_num        = LEDC_TIMER_0,
+        .freq_hz          = BL_PWM_FREQ,  // Set output frequency at 1 kHz
+        .clk_cfg          = LEDC_AUTO_CLK
+    	};
+    ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
+    ledc_channel_config_t ledc_channel = {
+        .speed_mode     = LEDC_LOW_SPEED_MODE,
+        .channel        = LEDC_CHANNEL_0,
+        .timer_sel      = LEDC_TIMER_0,
+        .intr_type      = LEDC_INTR_DISABLE,
+        .gpio_num       = LCD_BK_LIGHT,
+        .duty           = 0, // Set duty to 0%
+        .hpoint         = 0
+    	};
+    ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));	
+	}
+	
+void set_bl_pwm(int s)
+	{
+	ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, (BL_PWM_FREQ * s) / 100));
+	ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0));
 	}
 	
 

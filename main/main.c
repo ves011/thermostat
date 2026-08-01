@@ -64,6 +64,7 @@ void mqtt_exec_fun(int argc, char **argv)
 	{
 	if(argc)
 		{
+		ESP_LOGI(TAG, "MQTT command: |%s| - %d", argv[0], strlen(argv[0]));
 		if(strcmp(command, argv[0]) == 0)
 			do_temp(argc, argv);
 		if(strcmp("wifi", argv[0]) == 0)
@@ -73,6 +74,8 @@ void mqtt_exec_fun(int argc, char **argv)
 			do_system_cmd(argc, argv);
 			}
 		}
+	else
+		ESP_LOGI(TAG, "invalid command argc = 0");
 	}
 
 /**
@@ -92,6 +95,7 @@ static void initialize_nvs(void)
 		ESP_ERROR_CHECK(nvs_flash_erase());
 		err = nvs_flash_init();
 		}
+	ESP_LOGI(TAG, "nvs_flash_init(1): %d", err);
 	ESP_ERROR_CHECK(err);
 	}
 	
@@ -143,7 +147,8 @@ void app_main(void)
 		ESP_LOGE(TAG, "Unable to start lvgl task");
 		my_esp_restart();
 		}
-/* Wait for LVGL initialization to complete */
+
+// Wait for LVGL initialization to complete 
 	count = 0;
 	while(init_lcd_completed == 0)
 		{
@@ -171,6 +176,9 @@ void app_main(void)
     
 /* Wi-Fi initialization and connection */
     initialise_wifi(true);
+    register_system();
+	register_wifi();
+	
 	if(!wifi_join(NULL, NULL, JOIN_TIMEOUT_MS, true))
 		ESP_LOGI(TAG, "Failed to connect to %s", dev_conf.sta_ssid);
 	else
@@ -190,8 +198,6 @@ void app_main(void)
 
 /* Console and command registration */
 	esp_console_register_help_command();
-	register_system();
-	register_wifi();
 	
 /* Time synchronization */
 	sync_NTP_time();

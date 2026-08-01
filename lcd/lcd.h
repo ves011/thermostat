@@ -70,6 +70,10 @@
 /** Number of bits used to encode LCD command parameters */
 #define LCD_PARAM_BITS         8
 
+#define BL_PWM_FREQ				1024
+#define BL_PWM_LOW				10
+#define BL_PWM_HIGH				80
+
 /* -------------------------------------------------------------
  * Boot progress and error codes
  * ------------------------------------------------------------- */
@@ -140,14 +144,14 @@ extern uint32_t set_inactivity;
 /**
  * @brief LCD inactivity elapsed time counter (seconds)
  */
-extern uint32_t inactivity_lcd_sec;
+//extern uint32_t inactivity_lcd_sec;
 
 /**
  * @brief LCD inactivity state flag
  *
  * Used to control backlight behavior or UI blanking.
  */
-extern uint32_t lcd_inactivity;
+//extern uint32_t lcd_inactivity;
 
 /**
  * @brief LVGL API synchronization lock
@@ -180,5 +184,7 @@ extern int init_lcd_completed;
  * @param pvParameters Task parameters (unused)
  */
 void lvgl_task(void *pvParameters);
+
+void set_bl_pwm(int s);
 
 #endif /* LCD_LCD_H_ */

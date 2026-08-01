@@ -9,7 +9,9 @@
 #include "core/lv_obj_style.h"
 #include <string.h>
 #include <sys/time.h>
+#include "esp_ota_ops.h"
 #include "freertos/idf_additions.h"
+#include "esp_log.h"
 #include "lv_api_map_v9_1.h"
 #include "misc/lv_anim.h"
 #include "misc/lv_color.h"
@@ -17,10 +19,13 @@
 #include "common_defines.h"
 #include "ui.h"
 #include "lcd.h"
+#include "rot_enc.h"
 #include "state_screen.h"
+#include "utils.h"
 #include "option_screen.h"
 
-#define NITEMS		3
+static char *TAG = "opt_screen";
+#define NITEMS		4
 static lv_obj_t *ui_label[NITEMS];
 static lv_anim_t opt_anim[NITEMS];
 static lv_obj_t *ui_optionscreen = NULL;
@@ -79,6 +84,18 @@ static void draw_option_screen()
     lv_obj_set_style_text_font(ui_restartop, &lv_font_montserrat_30, LV_PART_MAIN | LV_STATE_DEFAULT);
 	ui_label[1] = ui_restartop;
  
+ 	lv_obj_t *ui_bootota = lv_label_create(ui_optionscreen);
+    lv_obj_set_width(ui_bootota, 162);
+    lv_obj_set_height(ui_bootota, 40);
+    lv_obj_set_x(ui_bootota, 82);
+    lv_obj_set_y(ui_bootota, 90);
+    lv_label_set_text(ui_bootota, "OTA");
+    lv_obj_set_style_text_color(ui_bootota, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_bootota, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui_bootota, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_bootota, &lv_font_montserrat_30, LV_PART_MAIN | LV_STATE_DEFAULT);
+	ui_label[2] = ui_bootota;
+	
     lv_obj_t *ui_cancel = lv_label_create(ui_optionscreen);
     lv_obj_set_width(ui_cancel, 162);
     lv_obj_set_height(ui_cancel, 40);
@@ -89,7 +106,7 @@ static void draw_option_screen()
     lv_obj_set_style_text_opa(ui_cancel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_align(ui_cancel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_cancel, &lv_font_montserrat_30, LV_PART_MAIN | LV_STATE_DEFAULT);
-    ui_label[2] = ui_cancel;
+    ui_label[3] = ui_cancel;
     
     for(int i = 0; i < NITEMS; i++)
     	label_Animation(i);
@@ -105,7 +122,7 @@ void do_option_screen()
 		draw_option_screen();
 	_lock_acquire(&lvgl_api_lock);
 	lv_scr_load_anim(ui_optionscreen, LV_SCR_LOAD_ANIM_MOVE_LEFT, 100, 0, false);
-	_lock_release(&lvgl_api_lock);
+	//_lock_release(&lvgl_api_lock);
 	anim = lv_anim_start(&opt_anim[opt_sel]);
 	_lock_release(&lvgl_api_lock);
 
@@ -113,6 +130,7 @@ void do_option_screen()
 		{
 		if(xQueueReceive(ui_cmd_q, &msg, portMAX_DELAY))
 			{
+			//ESP_LOGI(TAG, "option: msg.source = %d", msg.source);
 			switch(msg.source)
 				{
 				case K_PRESS:
@@ -132,6 +150,22 @@ void do_option_screen()
 						 _lock_acquire(&lvgl_api_lock);
 						lv_scr_load_anim(ui_optionscreen, LV_SCR_LOAD_ANIM_MOVE_LEFT, 100, 0, false);
 						_lock_release(&lvgl_api_lock);
+						}
+					else if(opt_sel == OPT_OTA)
+						{
+						const esp_partition_t *sbp = NULL;
+						sbp = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_1, OTA_PART_NAME);
+						if(sbp)
+							{
+							int err = esp_ota_set_boot_partition(sbp);
+							if(err == ESP_OK)
+								{
+								my_printf("Boot partition set to \"%s\" @ %06x", sbp->label, sbp->address);
+								my_printf("Reboot now to run it\n");
+								restart_in_progress = 1;
+    							my_esp_restart();
+								}
+							}
 						}
 					else if(opt_sel == OPT_RESTART)
 						esp_restart();
@@ -154,6 +188,9 @@ void do_option_screen()
 					anim = lv_anim_start(&opt_anim[opt_sel]);
 					_lock_release(&lvgl_api_lock);
 					break;
+				case ROT_INACTIVITY_TIMER:
+					set_bl_pwm(BL_PWM_LOW);
+					break;					
 				}
 			}
 		}

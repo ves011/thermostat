@@ -28,7 +28,7 @@ static lv_obj_t *bstep[8];
 
 static void draw_boot_screen()
 	{
-	gpio_set_level(LCD_BK_LIGHT, 0);
+	//gpio_set_level(LCD_BK_LIGHT, 0);
 
 	boot_scr = lv_obj_create(NULL);
 	lv_obj_set_style_bg_color(boot_scr, lv_color_hex(0x0), LV_PART_MAIN);
@@ -44,7 +44,7 @@ static void draw_boot_screen()
 	_lock_acquire(&lvgl_api_lock);
 	lv_scr_load_anim(boot_scr, LV_SCR_LOAD_ANIM_MOVE_LEFT, 100, 0, true);
 	_lock_release(&lvgl_api_lock);
-	gpio_set_level(LCD_BK_LIGHT, 1);
+	//gpio_set_level(LCD_BK_LIGHT, 1);
 	}
 
 void do_boot_screen()

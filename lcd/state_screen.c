@@ -176,6 +176,7 @@ void do_state_screen()
 		lv_obj_set_style_text_color(ui_wifinwval, lv_color_hex(0x0000FF), LV_PART_MAIN | LV_STATE_DEFAULT);
 		lv_obj_set_style_text_color(ui_wifinwval1, lv_color_hex(0x0000FF), LV_PART_MAIN | LV_STATE_DEFAULT);
 		}
+		
 	if(get_MQTT_connection_state(ssid))
 		{
 		lv_label_set_text(ui_mqttsval, "connected");
@@ -186,7 +187,9 @@ void do_state_screen()
 		lv_label_set_text(ui_mqttsval, "not connected");
 		lv_obj_set_style_text_color(ui_mqttsval, lv_color_hex(0x0000FF), LV_PART_MAIN | LV_STATE_DEFAULT);
 		}
+		
 	lv_label_set_text(ui_tidval, ssid);
+	
 	if((hwad = get_t_hwadd(0)) != 0)
 		{
 		sprintf(ssid, "%llX", hwad);
@@ -198,7 +201,8 @@ void do_state_screen()
 		lv_label_set_text(ui_tempprobeval, "not detected");
 		lv_obj_set_style_text_color(ui_tempprobeval, lv_color_hex(0x0000FF), LV_PART_MAIN | LV_STATE_DEFAULT);
 		}
-	
+		
+		
 	
 	
 	while(1)
@@ -212,6 +216,9 @@ void do_state_screen()
 						esp_restart();
 					return;
 					break;
+				case ROT_INACTIVITY_TIMER:
+					set_bl_pwm(BL_PWM_LOW);
+					break;					
 				default:
 					break;
 				}

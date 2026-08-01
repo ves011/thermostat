@@ -44,7 +44,7 @@
 #if TEST_BUILD == 1
     /** Enable interactive console in test builds */
     #define WITH_CONSOLE
-    #define TEST1
+    //#define TEST1
     /** Device ID used during test builds */
     #define CTRL_DEV_ID                    (98)
 //#else
@@ -186,7 +186,7 @@
 #define SET_INACTIVITY_TIME    10
 
 /** Timeout (seconds) before LCD backlight or UI inactivity */
-#define LCD_INACTIVITY_TIME    12
+//#define LCD_INACTIVITY_TIME    12
 
 /* -------------------------------------------------------------
  * Default thermostat configuration

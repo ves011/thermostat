@@ -200,7 +200,7 @@ static void draw_main_screen()
 	char buf[32];
 	
 	lv_obj_t * ui_heating = NULL;
-	gpio_set_level(LCD_BK_LIGHT, 0);
+	//gpio_set_level(LCD_BK_LIGHT, 0);
 
 	ui_mainscreen = lv_obj_create(NULL);
     lv_obj_remove_flag(ui_mainscreen, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_SCROLLABLE |
@@ -312,7 +312,7 @@ static void draw_main_screen()
 	heat_Animation(ui_heating, 0);
 	tempset_Animation(ui_acttemp, 0);
 
-	gpio_set_level(LCD_BK_LIGHT, 1);
+	//gpio_set_level(LCD_BK_LIGHT, 1);
 	}
 
 /* -------------------------------------------------------------
@@ -404,7 +404,7 @@ void do_main_screen(int active_screen)
 	xQueueSend(temp_mon_queue, &msg, pdMS_TO_TICKS(20));
 	msg.source = MSG_TEMP_DATA;
 	xQueueSend(temp_mon_queue, &msg, pdMS_TO_TICKS(20));
-	lcd_inactivity = 0;
+	//lcd_inactivity = 0;
 	while(1)
 		{
 		if(xQueueReceive(ui_cmd_q, &msg, portMAX_DELAY))
@@ -470,8 +470,8 @@ void do_main_screen(int active_screen)
 				case K_PRESS:
 					{
 					inactivity_set_sec = 0;	
-					gpio_set_level(LCD_BK_LIGHT, 1);
-					inactivity_lcd_sec = 0;
+					//gpio_set_level(LCD_BK_LIGHT, 1);
+					//inactivity_lcd_sec = 0;
 					if(msg.ifvals.ival[0] == 3)
 						{
 						//ESP_LOGI(TAG, "key pressed 3 times");
@@ -507,9 +507,9 @@ void do_main_screen(int active_screen)
 					break;
 					}
 				case K_ROT:
-					inactivity_lcd_sec = 0;
-					inactivity_set_sec = 0;
-					gpio_set_level(LCD_BK_LIGHT, 1);
+					//inactivity_lcd_sec = 0;
+					//inactivity_set_sec = 0;
+					//gpio_set_level(LCD_BK_LIGHT, 1);
 					if(therm_state == SET_STATE)
 						{
 						
@@ -524,6 +524,9 @@ void do_main_screen(int active_screen)
 							display_values(startget_temp, startget_temp - hyst_temp, startget_temp + hyst_temp, 2);
 		    				}
 						}
+					break;
+				case ROT_INACTIVITY_TIMER:
+					set_bl_pwm(BL_PWM_LOW);
 					break;
 				default:
 					break;

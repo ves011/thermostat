@@ -90,7 +90,7 @@ void tmon(void *pvParams)
 	char obuf[256], buf[40], mbuf[512];
 	time_t time_stamp;
 	struct tm timeinfo;
-	uint64_t hwad = 0;
+	uint64_t hwad = get_addr(0);
 	esp_timer_handle_t temp_timer;
 	bool monitor_running = false;
 	esp_timer_create_args_t temp_timer_args = 
@@ -126,7 +126,6 @@ void tmon(void *pvParams)
 				
 				ESP_ERROR_CHECK(ds18b20_trigger_all_temp_conv());
 				ESP_ERROR_CHECK(ds18b20_get_temperature(0, &ts));
-				hwad = get_addr(0);
 				
 				tc = ts;
 				msg.val = (int)(tc * 100.);
@@ -151,8 +150,8 @@ void tmon(void *pvParams)
 				sprintf(obuf, "0 - %d %6.3f %6.3f ", act_state, tc, ts);
 				sprintf(buf, "%llX\1%d\1%.3f\1%.3f\1", hwad, act_state, tc, ts);
 				strcat(mbuf, buf);
-				//ESP_LOGI(TAG, "%s", obuf);
-				publish_topic(TOPIC_MONITOR, mbuf, 0, 0);
+				ESP_LOGI(TAG, "%s", obuf);
+				//publish_topic(TOPIC_MONITOR, mbuf, 0, 0);
 
 				// check for maintenance time
 				if(open_maint_ts == 0)
@@ -273,8 +272,8 @@ int do_temp(int argc, char **argv)
 		{
 		if(t_args.arg->count)
 			{
-			act_state = t_args.arg->ival[0];
 			act_op(t_args.arg->ival[0], 0.0, true);
+			act_state = t_args.arg->ival[0];
 			}
 		ESP_LOGI(TAG, "Actuator state = %d", act_state);
 		}
@@ -400,6 +399,8 @@ void act_op(int op, float t, bool force)
 	{
 	msg_t msg = {0};
 	time_t ts = time(NULL);
+	char mbuf[256] = {0}, pl[32];
+	struct tm timeinfo;
 	if(force || ts - last_act_op >= on_off_time)
 		{
 		if(op != act_state)
@@ -411,7 +412,16 @@ void act_op(int op, float t, bool force)
 			act_state = op;
 			msg.source = HEATING_ONOFF;
 			msg.val = op;
-			xQueueSend(ui_cmd_q, &msg, pdMS_TO_TICKS(20)); 
+			xQueueSend(ui_cmd_q, &msg, pdMS_TO_TICKS(20));
+			
+			//publish new state
+			localtime_r(&ts, &timeinfo);
+			strftime(mbuf, sizeof(mbuf), "%Y-%m-%dT%H:%M:%S", &timeinfo);
+			uint64_t hwad = get_addr(0);
+			sprintf(pl, "\1%llX\1%d\1%.3f\1", hwad, act_state, t);
+			strcat(mbuf, pl);
+			publish_topic(TOPIC_MONITOR, mbuf, 0, 0);
+			 
 			}
 		}
 	}
