@@ -421,7 +421,6 @@ void act_op(int op, float t, bool force)
 			sprintf(pl, "\1%llX\1%d\1%.3f\1", hwad, act_state, t);
 			strcat(mbuf, pl);
 			publish_topic(TOPIC_MONITOR, mbuf, 0, 0);
-			 
 			}
 		}
 	}

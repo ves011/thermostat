@@ -134,24 +134,47 @@ void do_option_screen()
 			switch(msg.source)
 				{
 				case K_PRESS:
-					if(opt_sel == OPT_CANCEL)
+					if(msg.val == PUSH_TIME_SHORT)
 						{
-						if(ui_optionscreen) 
+						if(opt_sel == OPT_CANCEL)
 							{
-							_lock_acquire(&lvgl_api_lock);
-							lv_anim_pause(anim);
+							if(ui_optionscreen) 
+								{
+								_lock_acquire(&lvgl_api_lock);
+								lv_anim_pause(anim);
+								_lock_release(&lvgl_api_lock);
+								}
+							return;
+							}
+						else if(opt_sel == OPT_STATE)
+							{
+							do_state_screen();
+							 _lock_acquire(&lvgl_api_lock);
+							lv_scr_load_anim(ui_optionscreen, LV_SCR_LOAD_ANIM_MOVE_LEFT, 100, 0, false);
 							_lock_release(&lvgl_api_lock);
 							}
-						return;
+						/*
+						else if(opt_sel == OPT_OTA)
+							{
+							const esp_partition_t *sbp = NULL;
+							sbp = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_1, OTA_PART_NAME);
+							if(sbp)
+								{
+								int err = esp_ota_set_boot_partition(sbp);
+								if(err == ESP_OK)
+									{
+									my_printf("Boot partition set to \"%s\" @ %06x", sbp->label, sbp->address);
+									my_printf("Reboot now to run it\n");
+									restart_in_progress = 1;
+	    							my_esp_restart();
+									}
+								}
+							}
+						*/
+						else if(opt_sel == OPT_RESTART)
+							esp_restart();
 						}
-					else if(opt_sel == OPT_STATE)
-						{
-						do_state_screen();
-						 _lock_acquire(&lvgl_api_lock);
-						lv_scr_load_anim(ui_optionscreen, LV_SCR_LOAD_ANIM_MOVE_LEFT, 100, 0, false);
-						_lock_release(&lvgl_api_lock);
-						}
-					else if(opt_sel == OPT_OTA)
+					else if(msg.val == PUSH_TIME_LONGLONG && opt_sel == OPT_OTA)
 						{
 						const esp_partition_t *sbp = NULL;
 						sbp = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_1, OTA_PART_NAME);
@@ -163,12 +186,11 @@ void do_option_screen()
 								my_printf("Boot partition set to \"%s\" @ %06x", sbp->label, sbp->address);
 								my_printf("Reboot now to run it\n");
 								restart_in_progress = 1;
+								set_bl_pwm(0);
     							my_esp_restart();
 								}
-							}
+							}	
 						}
-					else if(opt_sel == OPT_RESTART)
-						esp_restart();
 					break;
 				case K_ROT:
 					if(anim)
