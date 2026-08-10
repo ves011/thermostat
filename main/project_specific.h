@@ -138,6 +138,11 @@
 /** Enable MQTT publishing */
 #define MQTT_PUBLISH        1 
 
+/** Enable reboot if MQTT connection fails MQTT_FAILATTEMPTS in a row*/
+#define ENABLE_MQTT_FAIL_REBOOT	1
+#define MQTT_FAILATTEMPTS		3
+
+
 /* -------------------------------------------------------------
  * Message identifiers (inter-task communication)
  * ------------------------------------------------------------- */

@@ -448,7 +448,7 @@ void do_main_screen(int active_screen)
 					{
 					if(therm_state == MEASURING_STATE)
 						{
-						t = (float)msg.val / 100.;
+						t = (float)(msg.val) / 100. ;
 						display_values(t, target_temp - hyst_temp, target_temp + hyst_temp, 0);
 						}
 					break;
@@ -495,7 +495,7 @@ void do_main_screen(int active_screen)
 							{
 							// save target temp set before (if changed)
 							if(startget_temp != target_temp)
-								set_configuration((int)(startget_temp * 100.), (int)(hyst_temp * 100.), (int)(freeze_temp * 100.), on_off_time, maint_time);
+								set_configuration((int)(startget_temp * 100.), (int)(hyst_temp * 100.), (int)(freeze_temp * 100.), on_off_time, maint_time, corr_temp);
 							get_temp(0, &t);
 							display_values(t, target_temp - hyst_temp, target_temp + hyst_temp, 0);
 	    					therm_state = MEASURING_STATE;

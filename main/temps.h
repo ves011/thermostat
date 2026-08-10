@@ -20,6 +20,7 @@
 #define FREEZE_TEMP			"freeze-temp"
 #define HYSTERESIS     		"hysteresis"
 #define MAINT_CYCLE   		"maint-cycle"
+#define CORR_TEMP			"corr-temp"
  
 
 /*
@@ -30,6 +31,7 @@
 #define DEFAULT_HYSTERESIS		0.5			// temperature histerezis
 #define DEFAULT_MAINT			14			// maximum interval between on/off cycles
 #define DEFAULT_FREEZET			5			// open actuator below this temp 
+#define DEFAULT_CORRECTION		0			// temp correction factor in 0.01 decC increments 
 
 
 #define DS18B20_RESOLUTION   (DS18B20_RESOLUTION_12_BIT)
@@ -37,7 +39,7 @@
 
 
 extern float	target_temp, hyst_temp, freeze_temp;
-extern int		on_off_time, maint_time;
+extern int		on_off_time, maint_time, corr_temp;
 extern QueueHandle_t temp_mon_queue;;
 extern char *command;
 
@@ -45,6 +47,6 @@ int register_temps();
 int do_temp(int argc, char **argv);
 void get_temp(int idx, float *temperature);
 uint64_t get_t_hwadd(int idx);
-void set_configuration(int targett, int histt, int freezet, int onoffc, int maintt);
+void set_configuration(int targett, int hystt, int freezet, int onoffc, int maintt, int corrtemp);
 
 #endif /* MAIN_TEMPS_H_ */
