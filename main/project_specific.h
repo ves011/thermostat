@@ -60,9 +60,18 @@
 /** Communication protocol used by the device (e.g. MQTT) */
 #define COMM_PROTO            MQTT_PROTO
 #define CONFIG_BROKER_URL "mqtts://proxy.gnet:1886"
+#define MQTT_RECONNECT_TIMEOUT_MS	10000
+/** Enable reboot if MQTT connection fails MQTT_FAILATTEMPTS in a row*/
+#define ENABLE_MQTT_FAIL_REBOOT		1
+#define MQTT_FAILATTEMPTS			10		//this means a rebbot is triggered if MQTT_FAILATTEMPTS in a row = 100 sec
+/** Enable MQTT publishing */
+#define MQTT_PUBLISH        1 
+
+
+#define FILESYSTEM	SPIFFS
 
 /* Uncomment to enable OTA support */
-//#define OTA_SUPPORT
+#define OTA_SUPPORT
 
 /* -------------------------------------------------------------
  * Wi-Fi configuration
@@ -134,13 +143,6 @@
 
 /** Human-readable device name */
 #define DEV_NAME            "Room thermostat"
-
-/** Enable MQTT publishing */
-#define MQTT_PUBLISH        1 
-
-/** Enable reboot if MQTT connection fails MQTT_FAILATTEMPTS in a row*/
-#define ENABLE_MQTT_FAIL_REBOOT	1
-#define MQTT_FAILATTEMPTS		3
 
 
 /* -------------------------------------------------------------

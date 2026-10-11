@@ -29,6 +29,10 @@
 #include "freertos/idf_additions.h"
 #include "freertos/projdefs.h"
 #include "ntp_sync.h"
+//#include "esp_app_desc.h"
+#include "esp_ota_ops.h"
+#include "esp_partition.h"
+//#include "esp_image_format.h"
 #include "common_defines.h"
 #include "project_specific.h"
 #include "cmd_wifi.h"
@@ -38,6 +42,8 @@
 #include "mqtt_ctrl.h"
 #include "lcd.h"
 #include "temps.h"
+
+esp_app_desc_t bpart_desc;
 
 /**
  * @brief Indicates that a system restart has been requested or is in progress
@@ -128,6 +134,10 @@ void app_main(void)
 	int temps_probe = ESP_FAIL;
 	msg.source = BOOT_MSG;
     dev_conf.cs = CONSOLE_OFF;
+
+	memset(&bpart_desc, 0, sizeof(bpart_desc));
+	const esp_partition_t *bootp = esp_ota_get_boot_partition();
+	esp_ota_get_partition_description(bootp, &bpart_desc);
     
     /* Set local timezone (used by UI and logging) */
 	setenv("TZ","EET-2EEST,M3.4.0/03,M10.4.0/04",1);
@@ -143,10 +153,7 @@ void app_main(void)
 
 	xTaskCreate(lvgl_task, "lvgl_task", 8192, NULL, 2, &lvgl_task_handle);
 	if(!lvgl_task_handle)
-		{
-		ESP_LOGE(TAG, "Unable to start lvgl task");
-		my_esp_restart();
-		}
+		RESTART("Unable to start lvgl task");
 
 // Wait for LVGL initialization to complete 
 	count = 0;
@@ -154,10 +161,7 @@ void app_main(void)
 		{
 		count++;
 		if(count >= 10)
-			{
-			ESP_LOGE(TAG, "lcd init not completed in 5sec");
-			my_esp_restart();
-			}
+			RESTART("lcd init not completed in 5sec");
 		vTaskDelay(pdMS_TO_TICKS(500));
 		}
 

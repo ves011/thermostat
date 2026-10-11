@@ -29,8 +29,8 @@
 #include "misc/lv_anim.h"
 #include "misc/lv_anim_timeline.h"
 #include "misc/lv_color.h"
-#include "project_specific.h"
 #include "common_defines.h"
+#include "project_specific.h"
 #include "temps.h"
 #include "rot_enc.h"
 #include "mqtt_ctrl.h"
@@ -352,19 +352,18 @@ static void display_values(float t, float tmin_val, float tmax_val, int animatio
     lv_slider_set_value(ui_trange, pos, LV_ANIM_OFF);
 
     uint32_t color = LOWTXT_COLOR + pos * COLOR_STEP;
-    lv_obj_set_style_text_color(ui_acttemp,
-                               lv_color_hex(color), 0);
+    lv_obj_set_style_text_color(ui_acttemp, lv_color_hex(color), 0);
 
     if (animation == 1)
         ts_anim = lv_anim_start(&tempset_anim);
     else if (animation == 0 && ts_anim)
-    {
+    	{
         lv_anim_pause(ts_anim);
         lv_obj_set_style_opa(ui_acttemp, 255, 0);
-    }
+    	}
 
     _lock_release(&lvgl_api_lock);
-}
+	}
 
 /* -------------------------------------------------------------
  * Main screen event loop
@@ -446,7 +445,7 @@ void do_main_screen(int active_screen)
 					break;
 				case ACT_TEMP:
 					{
-					if(therm_state == MEASURING_STATE)
+					if(therm_state == MEASURING_STATE) 
 						{
 						t = (float)(msg.val) / 100. ;
 						display_values(t, target_temp - hyst_temp, target_temp + hyst_temp, 0);
@@ -470,8 +469,6 @@ void do_main_screen(int active_screen)
 				case K_PRESS:
 					{
 					inactivity_set_sec = 0;	
-					//gpio_set_level(LCD_BK_LIGHT, 1);
-					//inactivity_lcd_sec = 0;
 					if(msg.ifvals.ival[0] == 3)
 						{
 						//ESP_LOGI(TAG, "key pressed 3 times");
@@ -495,7 +492,7 @@ void do_main_screen(int active_screen)
 							{
 							// save target temp set before (if changed)
 							if(startget_temp != target_temp)
-								set_configuration((int)(startget_temp * 100.), (int)(hyst_temp * 100.), (int)(freeze_temp * 100.), on_off_time, maint_time, corr_temp);
+								set_configuration((int)(startget_temp * 100.));//, (int)(hyst_temp * 100.), (int)(freeze_temp * 100.), on_off_time, maint_time, corr_temp, dt_pub * 10);
 							get_temp(0, &t);
 							display_values(t, target_temp - hyst_temp, target_temp + hyst_temp, 0);
 	    					therm_state = MEASURING_STATE;
@@ -507,9 +504,7 @@ void do_main_screen(int active_screen)
 					break;
 					}
 				case K_ROT:
-					//inactivity_lcd_sec = 0;
-					//inactivity_set_sec = 0;
-					//gpio_set_level(LCD_BK_LIGHT, 1);
+					inactivity_set_sec = 0;
 					if(therm_state == SET_STATE)
 						{
 						

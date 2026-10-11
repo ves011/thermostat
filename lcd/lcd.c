@@ -369,17 +369,13 @@ void lvgl_task(void *pvParameters)
 /* Create UI command queue */
 	ui_cmd_q = xQueueCreate(10, sizeof(msg_t));
 	if(!ui_cmd_q)
-		{
-		ESP_LOGE(TAG, "Unable to create UI cmd queue");
-		my_esp_restart();
-		}
+		RESTART("Unable to create UI cmd queue");
+	
 	lcd_init();
 /* Start UI dispatcher task */
 	if(xTaskCreate(ui_task, "ui_task", 8192, NULL, 5, NULL) != pdPASS)
-		{
-		ESP_LOGE(TAG, "Unable to start UI task");
-		my_esp_restart();
-		}
+		RESTART("Unable to start UI task");
+
 	#ifdef ROT_ENCODER
 /* Initialize rotary encoder input */
 		init_rotenc(ui_cmd_q);

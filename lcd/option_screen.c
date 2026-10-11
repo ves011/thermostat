@@ -187,7 +187,7 @@ void do_option_screen()
 								my_printf("Reboot now to run it\n");
 								restart_in_progress = 1;
 								set_bl_pwm(0);
-    							my_esp_restart();
+    							RESTART("Reboot triggered by SW");
 								}
 							}	
 						}
