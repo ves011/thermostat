@@ -35,6 +35,7 @@
 //#include "esp_image_format.h"
 #include "common_defines.h"
 #include "project_specific.h"
+#include "crash_handler.h"
 #include "cmd_wifi.h"
 #include "cmd_system.h"
 #include "tcp_log.h"
@@ -132,6 +133,8 @@ void app_main(void)
 	msg_t msg;
 	int count;
 	int temps_probe = ESP_FAIL;
+	checkLastCrash();
+	g_crash->boot_count++;
 	msg.source = BOOT_MSG;
     dev_conf.cs = CONSOLE_OFF;
 

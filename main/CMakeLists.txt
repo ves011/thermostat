@@ -30,6 +30,7 @@ idf_component_register(
 							"../../esp32_common/owb/ds18b20.c"
 							"../../esp32_common/utils/ota.c"
 							"../../esp32_common/utils/rot_enc.c"
+							"../../esp32_common/utils/crash_handler.c"
                     INCLUDE_DIRS 
                     		"."
                     		"../lcd"
@@ -39,6 +40,27 @@ idf_component_register(
 							"../../esp32_common/cmds"
 							"../../esp32_common/tcp"
 							"../../esp32_common/owb"
+					REQUIRES
+						console
+						esp_driver_uart
+						esp_driver_rmt
+						esp_driver_gpio	
+        				esp_driver_ledc
+						esp_driver_gptimer
+						esp_http_client
+						esp_timer
+						app_update
+						spi_flash
+						nvs_flash
+						freertos
+						spiffs
+						mqtt
+						esp_netif
+						esp_wifi
+						esp_pm
 						)
-
 idf_build_set_property(COMPILE_OPTIONS "-DLV_CONF_PATH=\"../lcd/lv_conf.h\"" APPEND)
+target_link_libraries(${COMPONENT_LIB} INTERFACE "-ucommon_app_desc")
+target_compile_definitions(${COMPONENT_LIB} PRIVATE
+    COMMON_REPO_VERSION="${COMMON_REPO_VERSION}")
+
