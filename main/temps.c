@@ -389,7 +389,7 @@ int register_temps()
 
 	return ret;
 	}
-int do_ota_temp_task(int argc, char **argv)
+int do_ota_tmon_task(int argc, char **argv)
 	{
 	msg_t msg;
 	if(argc == 3 && strlen(argv[1]) > 0 && strlen(argv[2]) > 0)
