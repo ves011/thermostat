@@ -161,6 +161,12 @@
 /** Actuator timing message */
 #define MSG_ACT_TIME        (4)
 
+/*
+ * start OTA update 
+ * used to start it from inside temp task
+ */
+#define MSG_OTA_START       (5)
+
 /* -------------------------------------------------------------
  * Thermostat UI and control states
  * ------------------------------------------------------------- */

@@ -60,6 +60,7 @@ extern char *command;
 
 int register_temps();
 int do_temp(int argc, char **argv);
+int do_ota_temp_task(int argc, char **argv);
 void get_temp(int idx, float *temperature);
 uint64_t get_t_hwadd(int idx);
 void set_configuration(int targett);//, int hystt, int freezet, int onoffc, int maintt, int corrtemp, int dtpub);

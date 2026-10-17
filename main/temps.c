@@ -27,6 +27,7 @@
 #include "utils.h"
 #include "ds18b20.h"
 #include "lcd.h"
+#include "ota.h"
 #include "temps.h"
 
 static int num_temp_devices;
@@ -47,7 +48,7 @@ static float last_temp_rep = 0.;
 static void get_thermostat_conf();
 static void publish_state();
 
-struct
+static struct
 	{
     struct arg_str *op;
     struct arg_int *arg;
@@ -183,6 +184,15 @@ void tmon(void *pvParams)
 					}
 				else
 					ESP_LOGI(TAG, "Monitor timer not started");
+				}
+			else if(msg.source == MSG_OTA_START) // start ota update
+				{
+				char url[64], pname[32];
+				strncpy(pname, (char *)msg.vts.m_val, sizeof(msg.vts.m_val));
+				strncpy(url, (char *)msg.ifvals.ival, sizeof(msg.ifvals.ival));
+				url[sizeof(msg.ifvals.ival) - 1] = 0;
+				pname[sizeof(msg.vts.m_val) - 1] = 0;
+				ota_task(url, pname);
 				}
 			}
 		}
@@ -379,7 +389,20 @@ int register_temps()
 
 	return ret;
 	}
-
+int do_ota_temp_task(int argc, char **argv)
+	{
+	msg_t msg;
+	if(argc == 3 && strlen(argv[1]) > 0 && strlen(argv[2]) > 0)
+		{
+		strcpy((char *)msg.vts.m_val, argv[2]);
+		strcpy((char *)msg.ifvals.ival, argv[1]);
+		msg.source = MSG_OTA_START;
+		xQueueSend(temp_mon_queue, &msg, pdMS_TO_TICKS(20));
+		}
+	else
+		ESP_LOGI(TAG, "%s arguments error", argv[0]);
+	return 0;
+	}
 void act_op(int op, float t, bool force)
 	{
 	msg_t msg = {0};

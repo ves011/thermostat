@@ -74,7 +74,14 @@ void mqtt_exec_fun(int argc, char **argv)
 		ESP_LOGI(TAG, "MQTT command: |%s| - %d", argv[0], strlen(argv[0]));
 		if(strcmp(command, argv[0]) == 0)
 			do_temp(argc, argv);
-		if(strcmp("wifi", argv[0]) == 0)
+		/*
+		 * because of poor memory on, C3 OTA over TLS cannot run same time with MQTT over TLS
+		 * and because MQTT clinet cannot be killed from inside MQTT task
+		 * OTA command has to be deffered to another task here is temps_task
+		 */
+		else if(strcmp("ota", argv[0]) == 0)
+			do_ota_tmon_task(argc, argv);
+		else if(strcmp("wifi", argv[0]) == 0)
 			do_wifi(argc, argv);
 		else
 			{
