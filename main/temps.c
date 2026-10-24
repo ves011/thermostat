@@ -299,9 +299,17 @@ int do_temp(int argc, char **argv)
 						if(err == ESP_OK)
 							{
 							if(!strcmp(t_args.arg1->sval[0], TARGET_TEMP))
+								{
+								msg.source = MSG_TEMP_DATA;
+								xQueueSend(temp_mon_queue, &msg, pdMS_TO_TICKS(20));
 								target_temp = val / 100.;
+								}
 							else if(!strcmp(t_args.arg1->sval[0], HYSTERESIS))
+								{
+								msg.source = MSG_TEMP_DATA;
+								xQueueSend(temp_mon_queue, &msg, pdMS_TO_TICKS(20));
 								hyst_temp = val / 100.;
+								}
 							else if(!strcmp(t_args.arg1->sval[0], FREEZE_TEMP))
 								freeze_temp = val / 100.;
 							else if(!strcmp(t_args.arg1->sval[0], DT_PUB))
