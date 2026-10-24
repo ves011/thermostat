@@ -137,7 +137,7 @@ void tmon(void *pvParams)
 						{
 						char obuf[64];
 						ESP_LOGI(TAG, "temp mon: %d, t = %.2f", act_state, ts);
-						sprintf(obuf, "\1%s\1%d\1%.2f\1", TEMP_MON, act_state, ts);
+						sprintf(obuf, "\1%s\1%d\1%.2f\1%.2f\1", TEMP_MON, act_state, ts, target_temp);
 						strcat(mbuf, obuf);
 						publish_topic(TOPIC_MONITOR, mbuf, 0, 0);
 						last_temp_rep = ts;
@@ -312,11 +312,11 @@ int do_temp(int argc, char **argv)
 								maint_time = val;
 							else if(!strcmp(t_args.arg1->sval[0], CORR_TEMP))
 								corr_temp = val;
+							nvs_commit(handle);
+							publish_state();
 							}
 						else
 							ESP_LOGI(TAG, "Error setting %s value: %s / %d", keyname, esp_err_to_name(err), err);
-
-						nvs_commit(handle);
 						nvs_close(handle);
 						}	
 					}
@@ -424,7 +424,7 @@ void act_op(int op, float t, bool force)
 			//publish new state
 			localtime_r(&ts, &timeinfo);
 			strftime(mbuf, sizeof(mbuf), "%Y-%m-%dT%H:%M:%S", &timeinfo);
-			sprintf(pl, "\1%s\1%d\1%.2f\1", ACT_MON, op, t);
+			sprintf(pl, "\1%s\1%d\1%.2f\1%.2f\1", ACT_MON, op, t, target_temp);
 			strcat(mbuf, pl);
 			publish_topic(TOPIC_MONITOR, mbuf, 0, 0);
 			act_state = op;
