@@ -380,7 +380,7 @@ void do_main_screen(int active_screen)
 	int therm_state = MEASURING_STATE;
 	int nw_connection_state = get_MQTT_connection_state(NULL);
 	float t;
-	float startget_temp = 0;
+	float starget_temp = 0;
 	if(ui_mainscreen == NULL)
 		draw_main_screen();
 	
@@ -482,8 +482,8 @@ void do_main_screen(int active_screen)
 						{
 						if(therm_state == MEASURING_STATE) // enter set state
 							{
-							startget_temp = target_temp;
-							display_values(startget_temp, startget_temp - hyst_temp, startget_temp + hyst_temp, 1);
+							starget_temp = target_temp;
+							display_values(starget_temp, starget_temp - hyst_temp, starget_temp + hyst_temp, 1);
 							therm_state = SET_STATE;
 							// start inactivity set
 							set_inactivity = 1;
@@ -491,8 +491,8 @@ void do_main_screen(int active_screen)
 						else if(therm_state == SET_STATE) // exit set state
 							{
 							// save target temp set before (if changed)
-							if(startget_temp != target_temp)
-								set_configuration((int)(startget_temp * 100.));//, (int)(hyst_temp * 100.), (int)(freeze_temp * 100.), on_off_time, maint_time, corr_temp, dt_pub * 10);
+							if(starget_temp != target_temp)
+								set_configuration((int)(starget_temp * 100.));//, (int)(hyst_temp * 100.), (int)(freeze_temp * 100.), on_off_time, maint_time, corr_temp, dt_pub * 10);
 							get_temp(0, &t);
 							display_values(t, target_temp - hyst_temp, target_temp + hyst_temp, 0);
 	    					therm_state = MEASURING_STATE;
@@ -508,15 +508,15 @@ void do_main_screen(int active_screen)
 					if(therm_state == SET_STATE)
 						{
 						
-						if(msg.val == K_ROT_LEFT && startget_temp > MIN_TARGET_TEMP)
+						if(msg.val == K_ROT_LEFT && starget_temp > MIN_TARGET_TEMP)
 							{
-							startget_temp -= 0.1;
-							display_values(startget_temp, startget_temp - hyst_temp, startget_temp + hyst_temp, 2);
+							starget_temp -= 0.1;
+							display_values(starget_temp, starget_temp - hyst_temp, starget_temp + hyst_temp, 2);
 		    				}
-						if(msg.val == K_ROT_RIGHT && startget_temp < MAX_TARGET_TEMP)
+						if(msg.val == K_ROT_RIGHT && starget_temp < MAX_TARGET_TEMP)
 							{
-							startget_temp += 0.1;
-							display_values(startget_temp, startget_temp - hyst_temp, startget_temp + hyst_temp, 2);
+							starget_temp += 0.1;
+							display_values(starget_temp, starget_temp - hyst_temp, starget_temp + hyst_temp, 2);
 		    				}
 						}
 					break;

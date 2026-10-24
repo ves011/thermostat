@@ -449,7 +449,7 @@ static void get_thermostat_conf()
 		{
 		err = nvs_get_i32(handle, TARGET_TEMP, &val);
 		if(err == ESP_OK)
-			target_temp = val / 100.;
+			target_temp = floor((val + 5) / 10.) / 10.;
 		else
 			ESP_LOGI(TAG, "Error getting %s value. Taking default: %.2f (%s / %d)", TARGET_TEMP, target_temp, esp_err_to_name(err), err);
 		err = nvs_get_i32(handle, HYSTERESIS, &val);
