@@ -391,10 +391,8 @@ int register_temps()
 		.argtable = &t_args
 		};
 	ESP_ERROR_CHECK(esp_console_cmd_register(&t_cmd));
-	
-	if(xTaskCreate(tmon, "tmon_task", 8192, NULL, USER_TASK_PRIORITY, NULL) != pdPASS)
+	if(xTaskCreate(tmon, "tmon_task", 6144, NULL, USER_TASK_PRIORITY, NULL)	!= pdPASS)
 		RESTART("Unable to create temp mon task");
-
 	return ret;
 	}
 int do_ota_tmon_task(int argc, char **argv)
