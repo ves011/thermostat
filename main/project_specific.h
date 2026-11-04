@@ -38,20 +38,8 @@
  */
 #define ACTIVE_CONTROLLER    (THERMOSTAT)
 
-/** Enable test build configuration */
-#define TEST_BUILD             0
-
-#if TEST_BUILD == 1
-    /** Enable interactive console in test builds */
-    #define WITH_CONSOLE
-    //#define TEST1
-    /** Device ID used during test builds */
-    #define CTRL_DEV_ID                    (98)
-//#else
-    /** Device ID used in production builds */
-    //#define CTRL_DEV_ID                    (1)
-#endif
-
+/** Enable interactive console */
+#define WITH_CONSOLE
 
 /* -------------------------------------------------------------
  * Communication and protocol selection

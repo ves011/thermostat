@@ -80,7 +80,7 @@ void tmon(void *pvParams)
 	float ts = 0., tp[2] = {-100, -100.};
 	//char obuf[256], buf[40];
 	char mbuf[512];
-	time_t time_stamp;
+	time_t time_stamp, last_time_rep = 0;
 	struct tm timeinfo;
 	esp_timer_handle_t temp_timer;
 	bool monitor_running = false;
@@ -141,6 +141,20 @@ void tmon(void *pvParams)
 						strcat(mbuf, obuf);
 						publish_topic(TOPIC_MONITOR, mbuf, 0, 0);
 						last_temp_rep = ts;
+						last_time_rep = time_stamp;
+						}
+					else
+						{
+						if(time_stamp - last_time_rep > 3600) //publish every 1 hour even if no change
+							{
+							char obuf[64];
+							ESP_LOGI(TAG, "temp mon: %d, t = %.2f", act_state, ts);
+							sprintf(obuf, "\1%s\1%d\1%.2f\1%.2f\1", TEMP_MON, act_state, ts, target_temp);
+							strcat(mbuf, obuf);
+							publish_topic(TOPIC_MONITOR, mbuf, 0, 0);
+							last_temp_rep = ts;
+							last_time_rep = time_stamp;
+							}
 						}
 					}
 
@@ -391,7 +405,7 @@ int register_temps()
 		.argtable = &t_args
 		};
 	ESP_ERROR_CHECK(esp_console_cmd_register(&t_cmd));
-	if(xTaskCreate(tmon, "tmon_task", 6144, NULL, USER_TASK_PRIORITY, NULL)	!= pdPASS)
+	if(xTaskCreate(tmon, "tmon_task", 8192, NULL, USER_TASK_PRIORITY, NULL)	!= pdPASS)
 		RESTART("Unable to create temp mon task");
 	return ret;
 	}
@@ -413,6 +427,7 @@ void act_op(int op, float t, bool force)
 	{
 	msg_t msg = {0};
 	time_t ts = time(NULL);
+	time_t tsp1 = ts - 60; // 1 minute before current time
 	char mbuf[256] = {0}, pl[32];
 	struct tm timeinfo;
 	if(force || ts - last_act_op >= on_off_time)
@@ -427,6 +442,13 @@ void act_op(int op, float t, bool force)
 			msg.val = op;
 			xQueueSend(ui_cmd_q, &msg, pdMS_TO_TICKS(20));
 			
+			//publish actuator state before change
+			localtime_r(&tsp1, &timeinfo);
+			strftime(mbuf, sizeof(mbuf), "%Y-%m-%dT%H:%M:%S", &timeinfo);
+			sprintf(pl, "\1%s\1%d\1%.2f\1%.2f\1", ACT_MON, act_state, t, target_temp);
+			strcat(mbuf, pl);
+			publish_topic(TOPIC_MONITOR, mbuf, 0, 0);
+
 			//publish new state
 			localtime_r(&ts, &timeinfo);
 			strftime(mbuf, sizeof(mbuf), "%Y-%m-%dT%H:%M:%S", &timeinfo);
